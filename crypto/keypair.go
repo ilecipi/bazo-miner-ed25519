@@ -3,15 +3,17 @@ package crypto
 import (
 	"bufio"
 	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"golang.org/x/crypto/ed25519"
 	"log"
 	"math/big"
 	"os"
 	"strings"
 )
+
 
 func ExtractECDSAKeyFromFile(filename string) (privKey *ecdsa.PrivateKey, err error) {
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
@@ -29,7 +31,6 @@ func ExtractECDSAKeyFromFile(filename string) (privKey *ecdsa.PrivateKey, err er
 
 	reader := bufio.NewReader(filehandle)
 	privKey, err = readECDSAPrivateKey(reader)
-
 	if err != nil {
 		return privKey, errors.New(fmt.Sprintf("%v", err))
 	}
@@ -44,7 +45,6 @@ func ExtractECDSAPublicKeyFromFile(filename string) (pubKey *ecdsa.PublicKey, er
 			return nil, err
 		}
 	}
-
 	filehandle, err := os.Open(filename)
 	if err != nil {
 		return pubKey, errors.New(fmt.Sprintf("%v", err))
@@ -52,7 +52,6 @@ func ExtractECDSAPublicKeyFromFile(filename string) (pubKey *ecdsa.PublicKey, er
 	defer filehandle.Close()
 
 	reader := bufio.NewReader(filehandle)
-
 	return readECDSAPublicKey(reader)
 }
 
@@ -81,13 +80,13 @@ func readECDSAPrivateKey(reader *bufio.Reader) (privKey *ecdsa.PrivateKey, err e
 func readECDSAPublicKey(reader *bufio.Reader) (pubKey *ecdsa.PublicKey, err error) {
 	//Public Key
 	pub1, err := reader.ReadString('\n')
-	pub2, err := reader.ReadString('\n')
 
 	if err != nil {
 		return pubKey, errors.New(fmt.Sprintf("Could not read key from file: %v", err))
 	}
-
-	return GetPubKeyFromString(strings.Split(pub1, "\n")[0], strings.Split(pub2, "\n")[0])
+	a,err := GetPubKeyFromString2(strings.Split(pub1, "\n")[0])
+	fmt.Println("AAAAAAAAAAAA",a)
+	return GetPubKeyFromString(strings.Split(pub1, "\n")[0],)
 }
 
 func VerifyECDSAKey(privKey *ecdsa.PrivateKey) error {
@@ -131,36 +130,25 @@ func GetAddressFromPubKey(pubKey *ecdsa.PublicKey) (address [64]byte) {
 	return address
 }
 
-func GetPubKeyFromAddress(address [64]byte) (pubKey *ecdsa.PublicKey) {
-	pubKey1Sig, pubKey2Sig := new(big.Int), new(big.Int)
-	pubKey1Sig.SetBytes(address[:32])
-	pubKey2Sig.SetBytes(address[32:])
-	return &ecdsa.PublicKey {
-		Curve: elliptic.P256(),
-		X:     pubKey1Sig,
-		Y:     pubKey2Sig,
-	}
+func GetPubKeyFromString2(pub1 string) (pubKey ed25519.PublicKey, err error) {
+	pub, err := hex.DecodeString(pub1);
+
+	return ed25519.PublicKey(pub), nil
 }
+func GetPubKeyFromString(pub1 string) (pubKey *ecdsa.PublicKey, err error) {
+	pub, err := hex.DecodeString(pub1);
+	var pubB []byte
+	copy(pubB[:], pub)
 
-func GetPubKeyFromString(pub1, pub2 string) (pubKey *ecdsa.PublicKey, err error) {
-	pub1Int, b := new(big.Int).SetString(pub1, 16)
-	pub2Int, b := new(big.Int).SetString(pub2, 16)
-	if !b {
-		return pubKey, errors.New("failed to convert the key strings to big.Int")
-	}
-
-	pubKey = &ecdsa.PublicKey{
-		elliptic.P256(),
-		pub1Int,
-		pub2Int,
-	}
-
-	return pubKey, nil
+	return &ecdsa.PublicKey{}, nil
 }
 
 func CreateECDSAKeyFile(filename string) (err error) {
-	newKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-
+	//TODO: generate key ed25519
+	//newKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	pubKey, privKey, err :=ed25519.GenerateKey(rand.Reader)
+	fmt.Println("PUBKEY: ",pubKey)
+	fmt.Println("PRIVKEY:", privKey)
 	//Write the public key to the given textfile
 	if _, err = os.Stat(filename); !os.IsNotExist(err) {
 		return err
@@ -171,15 +159,12 @@ func CreateECDSAKeyFile(filename string) (err error) {
 		return err
 	}
 
-	var pubKey [64]byte
+	//var pubKey [64]byte
 
-	_, err1 := file.WriteString(string(newKey.X.Text(16)) + "\n")
-	_, err2 := file.WriteString(string(newKey.Y.Text(16)) + "\n")
-	_, err3 := file.WriteString(string(newKey.D.Text(16)) + "\n")
+	_, err1 := file.WriteString(hex.EncodeToString(privKey[0:32])+ "\n")
+	_, err2 := file.WriteString(hex.EncodeToString(privKey[32:64])+ "\n")
+	_, err3 := file.WriteString(hex.EncodeToString(pubKey)+ "\n")
 
-	newAccPub1, newAccPub2 := newKey.PublicKey.X.Bytes(), newKey.PublicKey.Y.Bytes()
-	copy(pubKey[0:32], newAccPub1)
-	copy(pubKey[32:64], newAccPub2)
 
 	if err1 != nil || err2 != nil || err3 != nil {
 		return errors.New("failed to write key to file")
