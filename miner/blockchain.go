@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/bazo-blockchain/bazo-miner/crypto"
 	"github.com/bazo-blockchain/bazo-miner/p2p"
+	"golang.org/x/crypto/ed25519"
 	"log"
 	"math"
 	"math/rand"
@@ -89,6 +90,47 @@ func InitFirstStart(wallet *ecdsa.PublicKey, commitment *rsa.PrivateKey) error {
 	FileConnections.WriteString(fmt.Sprintf(`"EPOCH BLOCK: \n Hash : %x \n Height : %d \nMPT : %x"`+`[color = red, shape = box]`+"\n",initialEpochBlock.Hash[0:8],initialEpochBlock.Height,initialEpochBlock.MerklePatriciaRoot[0:8]))
 
 	return Init(wallet, commitment)
+}
+
+func InitFirstStartED(wallet ed25519.PublicKey, commitment ed25519.PrivateKey) error {
+	var err error
+	FileConnections, err = os.OpenFile(fmt.Sprintf("hash-prevhash-%v.txt",strings.Split(p2p.Ipport, ":")[1]), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	FileConnectionsLog, err = os.OpenFile(fmt.Sprintf("hlog-for-%v.txt",strings.Split(p2p.Ipport, ":")[1]), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+/*
+	logger = storage.InitLogger()
+
+	//rootAddress := crypto.GetAddressFromPubKey(wallet)
+	rootAddress := commitment
+
+	genesis := protocol.NewGenesis(rootAddress, rootCommitment)
+	storage.WriteGenesis(&genesis)
+
+	//logger.Printf("Written Genesis Block: %v\n", genesis.String())
+	//FileConnectionsLog.WriteString(fmt.Sprintf("Written Genesis Block: %v\n", genesis.String()))
+*/
+	/*Write First Epoch block chained to the genesis block*/
+/*	initialEpochBlock := protocol.NewEpochBlock([][32]byte{genesis.Hash()}, 0)
+	initialEpochBlock.Hash = initialEpochBlock.HashEpochBlock()
+	FirstEpochBlock = initialEpochBlock
+	initialEpochBlock.State = storage.State
+	storage.WriteFirstEpochBlock(initialEpochBlock)
+	firstValMapping := protocol.NewMapping()
+	initialEpochBlock.ValMapping = firstValMapping
+	//logger.Printf("Written Epoch Block: %v\n", initialEpochBlock.String())
+	//FileConnectionsLog.WriteString(fmt.Sprintf("Written Epoch Block: %v\n", initialEpochBlock.String()))
+
+	//FileConnections.WriteString(fmt.Sprintf("'GENESIS: %x' -> 'EPOCH BLOCK: %x'\n", [32]byte{}, initialEpochBlock.Hash[0:15]))
+	hashGenesis := [32]byte{}
+	FileConnections.WriteString(fmt.Sprintf(`"GENESIS \n Hash : %x" -> "EPOCH BLOCK: \n Hash : %x \n Height : %d \nMPT : %x"`+"\n", hashGenesis[0:8],initialEpochBlock.Hash[0:8],initialEpochBlock.Height,initialEpochBlock.MerklePatriciaRoot[0:8]))
+	FileConnections.WriteString(fmt.Sprintf(`"GENESIS \n Hash : %x"`+`[color = green, shape = hexagon]`+"\n",hashGenesis[0:8]))
+	FileConnections.WriteString(fmt.Sprintf(`"EPOCH BLOCK: \n Hash : %x \n Height : %d \nMPT : %x"`+`[color = red, shape = box]`+"\n",initialEpochBlock.Hash[0:8],initialEpochBlock.Height,initialEpochBlock.MerklePatriciaRoot[0:8]))
+	//TODO
+	//return Init(wallet, commitment)
+*/
+	return nil
 }
 
 //Miner entry point

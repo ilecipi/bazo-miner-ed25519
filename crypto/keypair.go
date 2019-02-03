@@ -58,6 +58,44 @@ func ExtractECDSAPublicKeyFromFile(filename string) (pubKey *ecdsa.PublicKey, er
 	return readECDSAPublicKey(reader)
 }
 
+func ExtractEDPublicKeyFromFile(filename string) (pubKey ed25519.PublicKey, err error) {
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		err = CreateEDKeyFile(filename)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	filehandle, err := os.Open(filename)
+	if err != nil {
+		return pubKey, errors.New(fmt.Sprintf("%v", err))
+	}
+	defer filehandle.Close()
+
+	reader := bufio.NewReader(filehandle)
+
+	return readEDPublicKey(reader)
+}
+
+func ExtractEDPrivKeyFromFile(filename string) (privKey ed25519.PrivateKey, err error) {
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		err = CreateEDKeyFile(filename)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	filehandle, err := os.Open(filename)
+	if err != nil {
+		return privKey, errors.New(fmt.Sprintf("%v", err))
+	}
+	defer filehandle.Close()
+
+	reader := bufio.NewReader(filehandle)
+
+	return readEDPrivateKey(reader)
+}
+
 func readECDSAPrivateKey(reader *bufio.Reader) (privKey *ecdsa.PrivateKey, err error) {
 	pubKey, err := readECDSAPublicKey(reader)
 	priv, err2 := reader.ReadString('\n')
@@ -92,16 +130,31 @@ func readECDSAPublicKey(reader *bufio.Reader) (pubKey *ecdsa.PublicKey, err erro
 	return GetPubKeyFromString(strings.Split(pub1, "\n")[0], strings.Split(pub2, "\n")[0])
 }
 
-func readECDSAPublicKey2(reader *bufio.Reader) (pubKey ed25519.PublicKey, err error) {
+func readEDPublicKey(reader *bufio.Reader) (pubKey ed25519.PublicKey, err error) {
 	//Public Key
 	pub1, err := reader.ReadString('\n')
 
 	if err != nil {
 		return pubKey, errors.New(fmt.Sprintf("Could not read key from file: %v", err))
 	}
-	a,err := GetPubKeyFromString2(strings.Split(pub1, "\n")[0])
-	fmt.Println("AAAAAAAAAAAA",a)
-	return GetPubKeyFromString2(strings.Split(pub1, "\n")[0],)
+	pubKeyFile,err := GetPubKeyFromStringED(strings.Split(pub1, "\n")[0])
+	fmt.Println("<PubKey from File> ",pubKeyFile)
+	return GetPubKeyFromStringED(strings.Split(pub1, "\n")[0])
+}
+
+func readEDPrivateKey(reader *bufio.Reader) (privKey ed25519.PrivateKey, err error) {
+	//Public Key
+
+	pub, err := reader.ReadString('\n')
+	priv, err := reader.ReadString('\n')
+
+
+	if err != nil {
+		return privKey, errors.New(fmt.Sprintf("Could not read key from file: %v", err))
+	}
+	privKeyFile,err := GetPrivKeyFromStringED(pub,priv)
+	fmt.Println("<PrivKey from File> ",privKeyFile)
+	return GetPrivKeyFromStringED(strings.Split(pub, "\n")[0],strings.Split(priv, "\n")[0])
 }
 
 func VerifyECDSAKey(privKey *ecdsa.PrivateKey) error {
@@ -172,10 +225,17 @@ func GetPubKeyFromString(pub1, pub2 string) (pubKey *ecdsa.PublicKey, err error)
 	return pubKey, nil
 }
 
-func GetPubKeyFromString2(pub1 string) (pubKey ed25519.PublicKey, err error) {
+func GetPubKeyFromStringED(pub1 string) (pubKey ed25519.PublicKey, err error) {
 	pub, err := hex.DecodeString(pub1);
 
 	return ed25519.PublicKey(pub), nil
+}
+
+func GetPrivKeyFromStringED(publicKey string, privateKey string) (privKey ed25519.PrivateKey, err error) {
+	priv1, err := hex.DecodeString(privateKey);
+	priv2, err := hex.DecodeString(publicKey);
+
+	return ed25519.PrivateKey(append(priv1,priv2...)), nil
 }
 
 func CreateECDSAKeyFile(filename string) (err error) {
@@ -208,12 +268,10 @@ func CreateECDSAKeyFile(filename string) (err error) {
 	return nil
 }
 
-func CreateECDSAKeyFile2(filename string) (err error) {
-	//TODO: generate key ed25519
-	//newKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+func CreateEDKeyFile(filename string) (err error) {
 	pubKey, privKey, err :=ed25519.GenerateKey(rand.Reader)
-	fmt.Println("PUBKEY: ",pubKey)
-	fmt.Println("PRIVKEY:", privKey)
+	fmt.Println("PUBKEY: ",len(pubKey),pubKey)
+	fmt.Println("PRIVKEY:",len(privKey), privKey)
 	//Write the public key to the given textfile
 	if _, err = os.Stat(filename); !os.IsNotExist(err) {
 		return err
@@ -225,10 +283,9 @@ func CreateECDSAKeyFile2(filename string) (err error) {
 	}
 
 	//var pubKey [64]byte
-
-	_, err1 := file.WriteString(hex.EncodeToString(privKey[0:32])+ "\n")
-	_, err2 := file.WriteString(hex.EncodeToString(privKey[32:64])+ "\n")
-	_, err3 := file.WriteString(hex.EncodeToString(pubKey)+ "\n")
+	_, err1 := file.WriteString(hex.EncodeToString(pubKey)+ "\n")
+	_, err2 := file.WriteString(hex.EncodeToString(privKey[0:32])+ "\n")
+	_, err3 := file.WriteString(hex.EncodeToString(privKey[32:64])+ "\n")
 
 
 	if err1 != nil || err2 != nil || err3 != nil {
@@ -237,3 +294,4 @@ func CreateECDSAKeyFile2(filename string) (err error) {
 
 	return nil
 }
+
