@@ -5,8 +5,10 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"golang.org/x/crypto/ed25519"
 	"log"
 	"math/big"
 	"os"
@@ -90,6 +92,18 @@ func readECDSAPublicKey(reader *bufio.Reader) (pubKey *ecdsa.PublicKey, err erro
 	return GetPubKeyFromString(strings.Split(pub1, "\n")[0], strings.Split(pub2, "\n")[0])
 }
 
+func readECDSAPublicKey2(reader *bufio.Reader) (pubKey ed25519.PublicKey, err error) {
+	//Public Key
+	pub1, err := reader.ReadString('\n')
+
+	if err != nil {
+		return pubKey, errors.New(fmt.Sprintf("Could not read key from file: %v", err))
+	}
+	a,err := GetPubKeyFromString2(strings.Split(pub1, "\n")[0])
+	fmt.Println("AAAAAAAAAAAA",a)
+	return GetPubKeyFromString2(strings.Split(pub1, "\n")[0],)
+}
+
 func VerifyECDSAKey(privKey *ecdsa.PrivateKey) error {
 	//Make sure the key being used is a valid one, that can sign and verify hashes/transactions
 	hashed := []byte("testing")
@@ -158,6 +172,12 @@ func GetPubKeyFromString(pub1, pub2 string) (pubKey *ecdsa.PublicKey, err error)
 	return pubKey, nil
 }
 
+func GetPubKeyFromString2(pub1 string) (pubKey ed25519.PublicKey, err error) {
+	pub, err := hex.DecodeString(pub1);
+
+	return ed25519.PublicKey(pub), nil
+}
+
 func CreateECDSAKeyFile(filename string) (err error) {
 	newKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 
@@ -180,6 +200,36 @@ func CreateECDSAKeyFile(filename string) (err error) {
 	newAccPub1, newAccPub2 := newKey.PublicKey.X.Bytes(), newKey.PublicKey.Y.Bytes()
 	copy(pubKey[0:32], newAccPub1)
 	copy(pubKey[32:64], newAccPub2)
+
+	if err1 != nil || err2 != nil || err3 != nil {
+		return errors.New("failed to write key to file")
+	}
+
+	return nil
+}
+
+func CreateECDSAKeyFile2(filename string) (err error) {
+	//TODO: generate key ed25519
+	//newKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	pubKey, privKey, err :=ed25519.GenerateKey(rand.Reader)
+	fmt.Println("PUBKEY: ",pubKey)
+	fmt.Println("PRIVKEY:", privKey)
+	//Write the public key to the given textfile
+	if _, err = os.Stat(filename); !os.IsNotExist(err) {
+		return err
+	}
+
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+
+	//var pubKey [64]byte
+
+	_, err1 := file.WriteString(hex.EncodeToString(privKey[0:32])+ "\n")
+	_, err2 := file.WriteString(hex.EncodeToString(privKey[32:64])+ "\n")
+	_, err3 := file.WriteString(hex.EncodeToString(pubKey)+ "\n")
+
 
 	if err1 != nil || err2 != nil || err3 != nil {
 		return errors.New("failed to write key to file")
