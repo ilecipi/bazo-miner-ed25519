@@ -99,20 +99,21 @@ func InitFirstStartED(wallet ed25519.PublicKey, commitment ed25519.PrivateKey) e
 	if err != nil {
 		return err
 	}
-/*
+
 	logger = storage.InitLogger()
+	var rootCommitment [64]byte
 
 	//rootAddress := crypto.GetAddressFromPubKey(wallet)
-	rootAddress := commitment
+	rootAddress := crypto.GetAddresFromPubKeyED(wallet)
 
-	genesis := protocol.NewGenesis(rootAddress, rootCommitment)
-	storage.WriteGenesis(&genesis)
+	genesis := protocol.NewGenesisED(rootAddress, rootCommitment)
+	storage.WriteGenesisED(&genesis)
 
 	//logger.Printf("Written Genesis Block: %v\n", genesis.String())
 	//FileConnectionsLog.WriteString(fmt.Sprintf("Written Genesis Block: %v\n", genesis.String()))
-*/
+
 	/*Write First Epoch block chained to the genesis block*/
-/*	initialEpochBlock := protocol.NewEpochBlock([][32]byte{genesis.Hash()}, 0)
+	initialEpochBlock := protocol.NewEpochBlock([][32]byte{genesis.HashED()}, 0)
 	initialEpochBlock.Hash = initialEpochBlock.HashEpochBlock()
 	FirstEpochBlock = initialEpochBlock
 	initialEpochBlock.State = storage.State
@@ -129,7 +130,7 @@ func InitFirstStartED(wallet ed25519.PublicKey, commitment ed25519.PrivateKey) e
 	FileConnections.WriteString(fmt.Sprintf(`"EPOCH BLOCK: \n Hash : %x \n Height : %d \nMPT : %x"`+`[color = red, shape = box]`+"\n",initialEpochBlock.Hash[0:8],initialEpochBlock.Height,initialEpochBlock.MerklePatriciaRoot[0:8]))
 	//TODO
 	//return Init(wallet, commitment)
-*/
+
 	return nil
 }
 
