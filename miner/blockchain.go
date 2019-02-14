@@ -234,7 +234,7 @@ func Init(wallet *ecdsa.PublicKey, commitment *rsa.PrivateKey) error {
 	return nil
 }
 
-func InitED(wallet [32]byte, commitment ed25519.PrivateKey) error {
+func InitED(wallet ed25519.PublicKey, commitment ed25519.PrivateKey) error {
 	//this bool indicates whether the first epoch is over. Only in the first epoch, the bootstrapping node is assigning the
 	//validators to the shards and broadcasts this assignment to the other miners
 	firstEpochOver = false
@@ -292,7 +292,8 @@ func InitED(wallet [32]byte, commitment ed25519.PrivateKey) error {
 			if(lastEpochBlock != nil && ValidatorShardMap != nil){
 				storage.State = lastEpochBlock.State
 				NumberOfShards = lastEpochBlock.NofShards
-				ThisShardID = ValidatorShardMapED.ValMapping[wallet] //Save my ShardID
+				walletED := crypto.GetAddressFromPubKeyED(wallet)
+				ThisShardID = ValidatorShardMapED.ValMapping[walletED] //Save my ShardID
 				FirstStartAfterEpoch = true
 				epochMining(lastEpochBlock.Hash,lastEpochBlock.Height) //start mining based on the received Epoch Block
 			}
@@ -319,8 +320,8 @@ func InitED(wallet [32]byte, commitment ed25519.PrivateKey) error {
 		//broadcast the generated map to the other validators
 		//broadcastValidatorShardMapping(ValidatorShardMap)
 	}
-
-	ThisShardID = ValidatorShardMapED.ValMapping[wallet]
+	walletED := crypto.GetAddressFromPubKeyED(wallet)
+	ThisShardID = ValidatorShardMapED.ValMapping[walletED]
 
 	//logger.Printf("Entering epoch mining for the first time...")
 	//FileConnectionsLog.WriteString(fmt.Sprintf("Entering epoch mining for the first time..."))

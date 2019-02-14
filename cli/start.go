@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"crypto/ecdsa"
 	"fmt"
 	"golang.org/x/crypto/ed25519"
 	"os"
@@ -91,16 +90,16 @@ func Start(args *startArgs) error {
 	storage.Init(args.dataDirectory+"/" + database, args.bootstrapNodeAddress)
 	p2p.Init(args.myNodeAddress)
 
-	var validatorPubKey *ecdsa.PublicKey
+	//var validatorPubKey *ecdsa.PublicKey
 	var validatorPubKeyED ed25519.PublicKey
 	var err error
 
 	if(p2p.IsBootstrap()){
-		validatorPubKey, err = crypto.ExtractECDSAPublicKeyFromFile("walletMinerA.key")
+		//validatorPubKey, err = crypto.ExtractECDSAPublicKeyFromFile("walletMinerA.key")
 		validatorPubKeyED, err = crypto.ExtractEDPublicKeyFromFile("walletMinerAED.key")
 
 	} else {
-		validatorPubKey, err = crypto.ExtractECDSAPublicKeyFromFile(args.dataDirectory + "/" + wallet)
+		//validatorPubKey, err = crypto.ExtractECDSAPublicKeyFromFile(args.dataDirectory + "/" + wallet)
 		validatorPubKeyED, err = crypto.ExtractEDPublicKeyFromFile(args.dataDirectory + "/" + wallet)
 
 	}
@@ -111,7 +110,7 @@ func Start(args *startArgs) error {
 		return err
 	}
 
-	commPrivKey, err := crypto.ExtractRSAKeyFromFile(args.dataDirectory + "/" + commitment)
+	//commPrivKey, err := crypto.ExtractRSAKeyFromFile(args.dataDirectory + "/" + commitment)
 
 	//TODO: fix this so that it uses args.dataDirectory
 	privKey, err := crypto.ExtractEDPrivKeyFromFile("walletMinerAED.key" )
@@ -123,10 +122,10 @@ func Start(args *startArgs) error {
 	// Check if executor is root and if it's the first start
 	if p2p.IsBootstrap() && firstStart {
 		//TODO continue from here
-		 miner.InitFirstStartED(validatorPubKeyED, privKey)
-		return miner.InitFirstStart(validatorPubKey, commPrivKey)
+		 //miner.InitFirstStartED(validatorPubKeyED, privKey)
+		return miner.InitFirstStartED(validatorPubKeyED, privKey)
 	} else {
-		return miner.Init(validatorPubKey, commPrivKey)
+		return miner.InitED(validatorPubKeyED, privKey)
 	}
 
 	return nil
