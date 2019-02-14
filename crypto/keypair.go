@@ -171,6 +171,20 @@ func VerifyECDSAKey(privKey *ecdsa.PrivateKey) error {
 	return nil
 }
 
+func VerifyEDKey(privKey ed25519.PrivateKey, pubKey ed25519.PublicKey) error {
+	//Make sure the key being used is a valid one, that can sign and verify hashes/transactions
+	hashed := []byte("testing")
+	s := ed25519.Sign(privKey, hashed)
+	if s == nil {
+		return errors.New("the ed25519 key you provided is invalid and cannot sign hashes")
+	}
+
+	if !ed25519.Verify(pubKey,hashed, s) {
+		return errors.New("the ecdsa key you provided is invalid and cannot verify hashes")
+	}
+	return nil
+}
+
 func ReadFile(filename string) (lines []string) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -194,7 +208,13 @@ func ReadFile(filename string) (lines []string) {
 func GetAddressFromPubKey(pubKey *ecdsa.PublicKey) (address [64]byte) {
 	copy(address[:32], pubKey.X.Bytes())
 	copy(address[32:], pubKey.Y.Bytes())
+	return address
+}
 
+func GetAddresFromPubKeyED(pubKey ed25519.PublicKey) (address [32]byte){
+	for index := range pubKey {
+		address[index] = pubKey[index]
+	}
 	return address
 }
 
@@ -207,6 +227,11 @@ func GetPubKeyFromAddress(address [64]byte) (pubKey *ecdsa.PublicKey) {
 		X:     pubKey1Sig,
 		Y:     pubKey2Sig,
 	}
+}
+
+func GetPubKeyFromAddressED(address [32]byte)(pubKey ed25519.PublicKey){
+	pubKey = address[:32]
+	return pubKey
 }
 
 func GetPubKeyFromString(pub1, pub2 string) (pubKey *ecdsa.PublicKey, err error) {
