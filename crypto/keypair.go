@@ -211,7 +211,7 @@ func GetAddressFromPubKey(pubKey *ecdsa.PublicKey) (address [64]byte) {
 	return address
 }
 
-func GetAddresFromPubKeyED(pubKey ed25519.PublicKey) (address [32]byte){
+func GetAddressFromPubKeyED(pubKey ed25519.PublicKey) (address [32]byte){
 	for index := range pubKey {
 		address[index] = pubKey[index]
 	}
