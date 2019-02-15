@@ -95,7 +95,7 @@ func finalizeBlock(block *protocol.Block) error {
 
 	// Cryptographic Sortition for PoS in Bazo
 	// The commitment proof stores a signed message of the Height that this block was created at.
-	commitmentProof:= crypto.SignMessageWithED(commPrivKeyED, fmt.Sprint(block.Height))
+	commitmentProof:= crypto.SignMessageWithED(commPrivKey, fmt.Sprint(block.Height))
 
 	partialHash := block.HashBlock()
 	prevProofs := GetLatestProofs(activeParameters.num_included_prev_proofs, block)
@@ -144,7 +144,7 @@ func finalizeEpochBlock(epochBlock *protocol.EpochBlock) error {
 
 	// Cryptographic Sortition for PoS in Bazo
 	// The commitment proof stores a signed message of the Height that this block was created at.
-	commitmentProof := crypto.SignMessageWithED(commPrivKeyED, fmt.Sprint(epochBlock.Height))
+	commitmentProof := crypto.SignMessageWithED(commPrivKey, fmt.Sprint(epochBlock.Height))
 	if err != nil {
 		return err
 	}

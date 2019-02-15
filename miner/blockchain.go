@@ -1,7 +1,6 @@
 package miner
 
 import (
-	"crypto/rsa"
 	"fmt"
 	"github.com/bazo-blockchain/bazo-miner/crypto"
 	"github.com/bazo-blockchain/bazo-miner/p2p"
@@ -31,8 +30,7 @@ var (
 	slashingDict            = make(map[[32]byte]SlashingProof)
 	validatorAccAddress     [32]byte
 	ThisShardID             int // ID of the shard this validator is assigned to
-	commPrivKey             *rsa.PrivateKey
-	commPrivKeyED			ed25519.PrivateKey
+	commPrivKey             ed25519.PrivateKey
 	NumberOfShards          int
 	ReceivedBlocksAtHeightX int //This counter is used to sync block heights among shards
 	LastShardHashes         [][32]byte // This slice stores the hashes of the last blocks from the other shards, needed to create the next epoch block
@@ -104,7 +102,7 @@ func InitED(wallet ed25519.PublicKey, commitment ed25519.PrivateKey) error {
 	FileConnections, _ = os.OpenFile(fmt.Sprintf("hash-prevhash-%v.txt",strings.Split(p2p.Ipport, ":")[1]), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	FileConnectionsLog, _ = os.OpenFile(fmt.Sprintf("hlog-for-%v.txt",strings.Split(p2p.Ipport, ":")[1]), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	//validatorAccAddressED := crypto.GetPubKeyFromAddressED(wallet)
-	//commPrivKeyED := commitment
+	commPrivKey = commitment
 
 	//Set up logger.
 	logger = storage.InitLogger()
