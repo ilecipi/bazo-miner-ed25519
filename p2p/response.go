@@ -230,7 +230,7 @@ func blockHeaderRes(p *peer, payload []byte) {
 //Responds to an account request from another miner
 func accRes(p *peer, payload []byte) {
 	var packet []byte
-	var pubKey [64]byte
+	var pubKey [32]byte
 	copy(pubKey[:], payload[0:64])
 
 	acc, _ := storage.ReadAccount(pubKey)
@@ -241,8 +241,8 @@ func accRes(p *peer, payload []byte) {
 
 func rootAccRes(p *peer, payload []byte) {
 	var packet []byte
-	var pubKey [64]byte
-	copy(pubKey[:], payload[0:64])
+	var pubKey [32]byte
+	copy(pubKey[:], payload[0:32])
 
 	acc, _ := storage.ReadRootAccount(pubKey)
 	packet = BuildPacket(ROOTACC_RES, acc.Encode())

@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"golang.org/x/crypto/ed25519"
 	"math/big"
 	"os"
 )
@@ -21,6 +22,9 @@ const (
 	COMM_PROOF_LENGTH    = 256
 	COMM_KEY_LENGTH      = 256
 	COMM_NOF_PRIMES      = 2
+	COMM_PROOF_LENGTH_ED = 64
+	COMM_KEY_LENGTH_ED      = 32
+
 )
 
 func ExtractRSAKeyFromFile(filename string) (privKey *rsa.PrivateKey, err error) {
@@ -148,9 +152,18 @@ func SignMessageWithRSAKey(privKey *rsa.PrivateKey, msg string) (fixedSig [COMM_
 	return fixedSig, nil
 }
 
+func SignMessageWithED(privKey ed25519.PrivateKey, msg string) (sig []byte){
+	sig = ed25519.Sign(privKey, []byte(msg))
+	return sig
+}
+
 func VerifyMessageWithRSAKey(pubKey *rsa.PublicKey, msg string, fixedSig [COMM_PROOF_LENGTH]byte) (err error) {
 	hashed := sha256.Sum256([]byte(msg))
 	return rsa.VerifyPKCS1v15(pubKey, crypto.SHA256, hashed[:], fixedSig[:])
+}
+
+func VerifyMessageWithED(pubKey [32]byte, msg string, sig []byte) (valid bool){
+	return ed25519.Verify(GetPubKeyFromAddressED(pubKey),[]byte(msg), sig)
 }
 
 func fromBase64(encoded string, err *error) (*big.Int, error) {

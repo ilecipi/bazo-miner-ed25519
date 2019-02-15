@@ -8,7 +8,7 @@ import (
 
 type ValShardMapping struct {
 	//Header
-	ValMapping        map[[64]byte]int
+	ValMapping        map[[32]byte]int
 	EpochHeight		  int
 }
 
@@ -20,7 +20,7 @@ type ValShardMappingED struct {
 
 func NewMapping() *ValShardMapping {
 	newMapping := new(ValShardMapping)
-	newMapping.ValMapping = make(map[[64]byte]int)
+	newMapping.ValMapping = make(map[[32]byte]int)
 	newMapping.EpochHeight = 0
 	return newMapping
 }
@@ -39,7 +39,7 @@ func (valMapping *ValShardMapping) HashMapping() [32]byte {
 	}
 
 	mappingHash := struct {
-		ValMapping				  map[[64]byte]int
+		ValMapping				  map[[32]byte]int
 		EpochHeight				  int
 	}{
 		valMapping.ValMapping,

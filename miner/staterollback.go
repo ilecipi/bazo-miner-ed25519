@@ -62,7 +62,7 @@ func stakeStateChangeRollback(txSlice []*protocol.StakeTx) {
 	}
 }
 
-func collectTxFeesRollback(contractTx []*protocol.ContractTx, fundsTx []*protocol.FundsTx, configTx []*protocol.ConfigTx, stakeTx []*protocol.StakeTx, minerAddress [64]byte) {
+func collectTxFeesRollback(contractTx []*protocol.ContractTx, fundsTx []*protocol.FundsTx, configTx []*protocol.ConfigTx, stakeTx []*protocol.StakeTx, minerAddress [32]byte) {
 	minerAcc, _ := storage.ReadAccount(minerAddress)
 
 	//Subtract fees from sender (check if that is allowed has already been done in the block validation)
@@ -91,13 +91,13 @@ func collectTxFeesRollback(contractTx []*protocol.ContractTx, fundsTx []*protoco
 	}
 }
 
-func collectBlockRewardRollback(reward uint64, minerAddress [64]byte) {
+func collectBlockRewardRollback(reward uint64, minerAddress [32]byte) {
 	minerAcc, _ := storage.ReadAccount(minerAddress)
 	minerAcc.Balance -= reward
 }
 
 func collectSlashRewardRollback(reward uint64, block *protocol.Block) {
-	if block.SlashedAddress != [64]byte{} || block.ConflictingBlockHash1 != [32]byte{} || block.ConflictingBlockHash2 != [32]byte{} {
+	if block.SlashedAddress != [32]byte{} || block.ConflictingBlockHash1 != [32]byte{} || block.ConflictingBlockHash2 != [32]byte{} {
 		minerAcc, _ := storage.ReadAccount(block.Beneficiary)
 		slashedAcc, _ := storage.ReadAccount(block.SlashedAddress)
 

@@ -19,13 +19,13 @@ type FundsTx struct {
 	Amount uint64
 	Fee    uint64
 	TxCnt  uint32
-	From   [64]byte
-	To     [64]byte
+	From   [32]byte
+	To     [32]byte
 	Sig    [64]byte
 	Data   []byte
 }
 
-func ConstrFundsTx(header byte, amount uint64, fee uint64, txCnt uint32, from, to [64]byte, sigKey *ecdsa.PrivateKey, data []byte) (tx *FundsTx, err error) {
+func ConstrFundsTx(header byte, amount uint64, fee uint64, txCnt uint32, from, to [32]byte, sigKey *ecdsa.PrivateKey, data []byte) (tx *FundsTx, err error) {
 	tx = new(FundsTx)
 	tx.Header = header
 	tx.From = from
@@ -59,8 +59,8 @@ func (tx *FundsTx) Hash() (hash [32]byte) {
 		Amount uint64
 		Fee    uint64
 		TxCnt  uint32
-		From   [64]byte
-		To     [64]byte
+		From   [32]byte
+		To     [32]byte
 		Data   []byte
 	}{
 		tx.Header,

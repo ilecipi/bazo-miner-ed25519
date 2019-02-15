@@ -1,16 +1,14 @@
 package protocol
 
 import (
-	"crypto/ecdsa"
-	"crypto/rand"
-	"crypto/rsa"
 	"encoding/binary"
 	"fmt"
 	"github.com/bazo-blockchain/bazo-miner/crypto"
+	"golang.org/x/crypto/ed25519"
 )
 
 const (
-	STAKETX_SIZE = 138 + crypto.COMM_KEY_LENGTH
+	STAKETX_SIZE = 138 + crypto.COMM_KEY_LENGTH_ED
 )
 
 //when we broadcast transactions we need a way to distinguish with a type
@@ -19,12 +17,12 @@ type StakeTx struct {
 	Header        byte                  // 1 Byte
 	Fee           uint64                // 8 Byte
 	IsStaking     bool                  // 1 Byte
-	Account       [64]byte              // 64 Byte
+	Account       [32]byte              // 64 Byte
 	Sig           [64]byte              // 64 Byte
-	CommitmentKey [crypto.COMM_KEY_LENGTH]byte // the modulus N of the RSA public key
+	CommitmentKey [crypto.COMM_KEY_LENGTH_ED]byte // the modulus N of the RSA public key
 }
 
-func ConstrStakeTx(header byte, fee uint64, isStaking bool, account [64]byte, signKey *ecdsa.PrivateKey, commPubKey *rsa.PublicKey) (tx *StakeTx, err error) {
+func ConstrStakeTx(header byte, fee uint64, isStaking bool, account [32]byte, signKey ed25519.PrivateKey, commPubKey ed25519.PublicKey) (tx *StakeTx, err error) {
 
 	tx = new(StakeTx)
 
@@ -33,17 +31,18 @@ func ConstrStakeTx(header byte, fee uint64, isStaking bool, account [64]byte, si
 	tx.IsStaking = isStaking
 	tx.Account = account
 
-	copy(tx.CommitmentKey[:], commPubKey.N.Bytes())
+	tx.CommitmentKey = crypto.GetAddressFromPubKeyED(commPubKey)
 
 	txHash := tx.Hash()
 
-	r, s, err := ecdsa.Sign(rand.Reader, signKey, txHash[:])
+	sign := ed25519.Sign(signKey, txHash[:])
+
+	copy(tx.Sig[:],sign[:])
+
 	if err != nil {
 		return nil, err
 	}
 
-	copy(tx.Sig[32-len(r.Bytes()):32], r.Bytes())
-	copy(tx.Sig[64-len(s.Bytes()):], s.Bytes())
 
 	return tx, nil
 }
@@ -58,8 +57,8 @@ func (tx *StakeTx) Hash() (hash [32]byte) {
 		Header     byte
 		Fee        uint64
 		IsStaking  bool
-		Account    [64]byte
-		CommKey    [crypto.COMM_KEY_LENGTH]byte
+		Account    [32]byte
+		CommKey    [32]byte
 	}{
 		tx.Header,
 		tx.Fee,
@@ -96,7 +95,7 @@ func (tx *StakeTx) Encode() (encodedTx []byte) {
 	encodedTx[9] = isStaking
 	copy(encodedTx[10:74], tx.Account[:])
 	copy(encodedTx[74:138], tx.Sig[:])
-	copy(encodedTx[138:138+crypto.COMM_KEY_LENGTH], tx.CommitmentKey[:])
+	copy(encodedTx[138:138+crypto.COMM_KEY_LENGTH_ED], tx.CommitmentKey[:])
 
 	return encodedTx
 }

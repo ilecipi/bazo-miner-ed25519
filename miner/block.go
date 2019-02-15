@@ -24,13 +24,14 @@ type blockData struct {
 	block         *protocol.Block
 }
 
+
 //Block constructor, argument is the previous block in the blockchain.
-func newBlock(prevHash [32]byte, commitmentProof [crypto.COMM_PROOF_LENGTH]byte, height uint32) *protocol.Block {
+func newBlock(prevHash [32]byte, commitmentProof [crypto.COMM_PROOF_LENGTH_ED]byte, height uint32) *protocol.Block {
 	block := new(protocol.Block)
 	block.PrevHash = prevHash
 	block.CommitmentProof = commitmentProof
 	block.Height = height
-	block.StateCopy = make(map[[64]byte]*protocol.Account)
+	block.StateCopy = make(map[[32]byte]*protocol.Account)
 
 	return block
 }
@@ -94,10 +95,7 @@ func finalizeBlock(block *protocol.Block) error {
 
 	// Cryptographic Sortition for PoS in Bazo
 	// The commitment proof stores a signed message of the Height that this block was created at.
-	commitmentProof, err := crypto.SignMessageWithRSAKey(commPrivKey, fmt.Sprint(block.Height))
-	if err != nil {
-		return err
-	}
+	commitmentProof:= crypto.SignMessageWithED(commPrivKeyED, fmt.Sprint(block.Height))
 
 	partialHash := block.HashBlock()
 	prevProofs := GetLatestProofs(activeParameters.num_included_prev_proofs, block)
@@ -124,7 +122,7 @@ func finalizeBlock(block *protocol.Block) error {
 	block.NrConfigTx = uint8(len(block.ConfigTxData))
 	block.NrStakeTx = uint16(len(block.StakeTxData))
 
-	copy(block.CommitmentProof[0:crypto.COMM_PROOF_LENGTH], commitmentProof[:])
+	copy(block.CommitmentProof[0:crypto.COMM_PROOF_LENGTH_ED], commitmentProof[:])
 
 	return nil
 }
@@ -146,7 +144,7 @@ func finalizeEpochBlock(epochBlock *protocol.EpochBlock) error {
 
 	// Cryptographic Sortition for PoS in Bazo
 	// The commitment proof stores a signed message of the Height that this block was created at.
-	commitmentProof, err := crypto.SignMessageWithRSAKey(commPrivKey, fmt.Sprint(epochBlock.Height))
+	commitmentProof := crypto.SignMessageWithED(commPrivKeyED, fmt.Sprint(epochBlock.Height))
 	if err != nil {
 		return err
 	}
@@ -186,7 +184,7 @@ func finalizeEpochBlock(epochBlock *protocol.EpochBlock) error {
 	//Put pieces together to get the final hash.
 	epochBlock.Hash = sha3.Sum256(append(nonceBuf[:], partialHash[:]...))
 
-	copy(epochBlock.CommitmentProof[0:crypto.COMM_PROOF_LENGTH], commitmentProof[:])
+	copy(epochBlock.CommitmentProofED[0:crypto.COMM_PROOF_LENGTH_ED], commitmentProof[:])
 
 	return nil
 }
@@ -282,7 +280,7 @@ func addFundsTx(b *protocol.Block, tx *protocol.FundsTx) error {
 				b.StateCopy[tx.From] = &newAcc
 			}
 		} else {
-			newFromAcc := protocol.NewAccount(tx.From, [64]byte{}, 0, false, [crypto.COMM_KEY_LENGTH]byte{}, nil, nil)
+			newFromAcc := protocol.NewAccount(tx.From, [32]byte{}, 0, false, [crypto.COMM_KEY_LENGTH_ED]byte{}, nil, nil)
 			b.StateCopy[tx.From] = &newFromAcc
 		}
 	}
@@ -296,7 +294,7 @@ func addFundsTx(b *protocol.Block, tx *protocol.FundsTx) error {
 				b.StateCopy[tx.To] = &newAcc
 			}
 		} else {
-			newToAcc := protocol.NewAccount(tx.To, [64]byte{}, 0, false, [crypto.COMM_KEY_LENGTH]byte{}, nil, nil)
+			newToAcc := protocol.NewAccount(tx.To, [32]byte{}, 0, false, [crypto.COMM_KEY_LENGTH_ED]byte{}, nil, nil)
 			b.StateCopy[tx.To] = &newToAcc
 		}
 	}
@@ -401,7 +399,7 @@ func addStakeTx(b *protocol.Block, tx *protocol.StakeTx) error {
 				b.StateCopy[tx.Account] = &newAcc
 			}
 		} else {
-			newAcc := protocol.NewAccount(tx.Account, [64]byte{}, 0, false, [crypto.COMM_KEY_LENGTH]byte{}, nil, nil)
+			newAcc := protocol.NewAccount(tx.Account, [32]byte{}, 0, false, [crypto.COMM_KEY_LENGTH_ED]byte{}, nil, nil)
 			b.StateCopy[tx.Account] = &newAcc
 		}
 	}
@@ -697,9 +695,9 @@ func validate(b *protocol.Block, initialSetup bool) error {
 	return nil
 }
 
-func CopyState(state map[[64]byte]*protocol.Account) map[[64]byte]protocol.Account {
+func CopyState(state map[[32]byte]*protocol.Account) map[[32]byte]protocol.Account {
 
-	var copyState = make(map[[64]byte]protocol.Account)
+	var copyState = make(map[[32]byte]protocol.Account)
 
 	for k, v := range state {
 		copyState[k] = *v
@@ -827,13 +825,10 @@ func preValidate(block *protocol.Block, initialSetup bool) (contractTxSlice []*p
 	//First, initialize an RSA Public Key instance with the modulus of the proposer of the block (acc)
 	//Second, check if the commitment proof of the proposed block can be verified with the public key
 	//Invalid if the commitment proof can not be verified with the public key of the proposer
-	commitmentPubKey, err := crypto.CreateRSAPubKeyFromBytes(acc.CommitmentKey)
-	if err != nil {
-		return nil, nil, nil, nil, errors.New("Invalid commitment key in account.")
-	}
+	commitmentPubKey := acc.CommitmentKey
 
-	err = crypto.VerifyMessageWithRSAKey(commitmentPubKey, fmt.Sprint(block.Height), block.CommitmentProof)
-	if err != nil {
+	valid := crypto.VerifyMessageWithED(commitmentPubKey, fmt.Sprint(block.Height), block.CommitmentProof[:])
+	if !valid {
 		return nil, nil, nil, nil, errors.New("The submitted commitment proof can not be verified.")
 	}
 
@@ -857,7 +852,7 @@ func preValidate(block *protocol.Block, initialSetup bool) (contractTxSlice []*p
 	}
 
 	//Check if block contains a proof for two conflicting block hashes, else no proof provided.
-	if block.SlashedAddress != [64]byte{} {
+	if block.SlashedAddress != [32]byte{} {
 		if _, err = slashingCheck(block.SlashedAddress, block.ConflictingBlockHash1, block.ConflictingBlockHash2); err != nil {
 			return nil, nil, nil, nil, err
 		}
@@ -1081,7 +1076,7 @@ func timestampCheck(timestamp int64) error {
 	return nil
 }
 
-func slashingCheck(slashedAddress [64]byte, conflictingBlockHash1, conflictingBlockHash2 [32]byte) (bool, error) {
+func slashingCheck(slashedAddress [32]byte, conflictingBlockHash1, conflictingBlockHash2 [32]byte) (bool, error) {
 	prefix := "Invalid slashing proof: "
 
 	if conflictingBlockHash1 == [32]byte{} || conflictingBlockHash2 == [32]byte{} {

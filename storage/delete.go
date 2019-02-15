@@ -90,7 +90,7 @@ func DeleteClosedTx(transaction protocol.Transaction) error {
 	})
 }
 
-func DeleteAccount(address [64]byte) {
+func DeleteAccount(address [32]byte) {
 	delete(State, address)
 }
 

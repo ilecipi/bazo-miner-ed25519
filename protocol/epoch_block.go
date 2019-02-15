@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"github.com/bazo-blockchain/bazo-miner/crypto"
 )
 
 type EpochBlock struct {
@@ -18,8 +17,8 @@ type EpochBlock struct {
 	Timestamp             int64
 	MerkleRoot            [32]byte
 	MerklePatriciaRoot    [32]byte
-	CommitmentProof       [crypto.COMM_PROOF_LENGTH]byte
-	State				  map[[64]byte]*Account
+	CommitmentProofED 		[64]byte
+	State				  map[[32]byte]*Account
 	ValMapping			  *ValShardMapping
 	NofShards			  int
 }
@@ -33,6 +32,7 @@ func NewEpochBlock(prevShardHashes [][32]byte, height uint32) *EpochBlock {
 	return &newEpochBlock
 }
 
+
 func (epochBlock *EpochBlock) HashEpochBlock() [32]byte {
 	if epochBlock == nil {
 		return [32]byte{}
@@ -44,8 +44,8 @@ func (epochBlock *EpochBlock) HashEpochBlock() [32]byte {
 		merkleRoot            		  [32]byte
 		merklePatriciaRoot	  		  [32]byte
 		height				  		  uint32
-		commitmentProof       		  [crypto.COMM_PROOF_LENGTH]byte
-		state					      map[[64]byte]*Account
+		commitmentProof       		  [64]byte
+		state					      map[[32]byte]*Account
 		valmapping					  *ValShardMapping
 		noshards					  int
 	}{
@@ -54,7 +54,7 @@ func (epochBlock *EpochBlock) HashEpochBlock() [32]byte {
 		epochBlock.MerkleRoot,
 		epochBlock.MerklePatriciaRoot,
 		epochBlock.Height,
-		epochBlock.CommitmentProof,
+		epochBlock.CommitmentProofED,
 		epochBlock.State,
 		epochBlock.ValMapping,
 		epochBlock.NofShards,
@@ -75,7 +75,31 @@ func (epochBlock *EpochBlock) Encode() []byte {
 		MerkleRoot:            epochBlock.MerkleRoot,
 		MerklePatriciaRoot:    epochBlock.MerklePatriciaRoot,
 		Height:                epochBlock.Height,
-		CommitmentProof:	   epochBlock.CommitmentProof,
+		CommitmentProofED:	   epochBlock.CommitmentProofED,
+		State:				   epochBlock.State,
+		ValMapping:			   epochBlock.ValMapping,
+		NofShards:			   epochBlock.NofShards,
+	}
+
+	buffer := new(bytes.Buffer)
+	gob.NewEncoder(buffer).Encode(encoded)
+	return buffer.Bytes()
+}
+
+func (epochBlock *EpochBlock) EncodeED() []byte {
+	if epochBlock == nil {
+		return nil
+	}
+
+	encoded := EpochBlock{
+		Header:                epochBlock.Header,
+		Hash:                  epochBlock.Hash,
+		PrevShardHashes:       epochBlock.PrevShardHashes,
+		Timestamp:             epochBlock.Timestamp,
+		MerkleRoot:            epochBlock.MerkleRoot,
+		MerklePatriciaRoot:    epochBlock.MerklePatriciaRoot,
+		Height:                epochBlock.Height,
+		CommitmentProofED:	   epochBlock.CommitmentProofED,
 		State:				   epochBlock.State,
 		ValMapping:			   epochBlock.ValMapping,
 		NofShards:			   epochBlock.NofShards,
@@ -134,7 +158,7 @@ func (epochBlock EpochBlock) String() string {
 		epochBlock.MerkleRoot[0:8],
 		epochBlock.MerklePatriciaRoot,
 		epochBlock.Height,
-		epochBlock.CommitmentProof[0:8],
+		epochBlock.CommitmentProofED[0:8],
 		epochBlock.StringState(),
 		epochBlock.ValMapping.String(),
 		epochBlock.NofShards,

@@ -1,11 +1,11 @@
 package miner
 
 import (
-	"crypto/ecdsa"
 	"fmt"
 	"github.com/bazo-blockchain/bazo-miner/crypto"
 	"github.com/bazo-blockchain/bazo-miner/protocol"
 	"github.com/bazo-blockchain/bazo-miner/storage"
+	"golang.org/x/crypto/ed25519"
 	"math/big"
 )
 
@@ -52,8 +52,8 @@ func verifyFundsTx(tx *protocol.FundsTx) bool {
 
 	txHash := tx.Hash()
 
-	pubKey := crypto.GetPubKeyFromAddress(tx.From)
-	if ecdsa.Verify(pubKey, txHash[:], r, s) && tx.From != tx.To {
+	pubKey := crypto.GetPubKeyFromAddressED(tx.From)
+	if ed25519.Verify(pubKey, txHash[:], tx.Sig[:]) && tx.From != tx.To {
 		return true
 	} else {
 		logger.Printf("Sig invalid. FromHash: %x\nToHash: %x\n", accFromHash[0:8], accToHash[0:8])
@@ -73,11 +73,11 @@ func verifyContractTx(tx *protocol.ContractTx) bool {
 	s.SetBytes(tx.Sig[32:])
 
 	for _, rootAcc := range storage.RootKeys {
-		pubKey := crypto.GetPubKeyFromAddress(rootAcc.Address)
+		pubKey := crypto.GetPubKeyFromAddressED(rootAcc.Address)
 		txHash := tx.Hash()
 
 		//Only the hash of the pubkey is hashed and verified here
-		if ecdsa.Verify(pubKey, txHash[:], r, s) == true {
+		if ed25519.Verify(pubKey, txHash[:], tx.Sig[:]) == true {
 			return true
 		}
 	}
@@ -97,9 +97,9 @@ func verifyConfigTx(tx *protocol.ConfigTx) bool {
 	s.SetBytes(tx.Sig[32:])
 
 	for _, rootAcc := range storage.RootKeys {
-		pubKey := crypto.GetPubKeyFromAddress(rootAcc.Address)
+		pubKey := crypto.GetPubKeyFromAddressED(rootAcc.Address)
 		txHash := tx.Hash()
-		if ecdsa.Verify(pubKey, txHash[:], r, s) == true {
+		if ed25519.Verify(pubKey, txHash[:], tx.Sig[:]) == true {
 			return true
 		}
 	}
@@ -117,7 +117,7 @@ func verifyStakeTx(tx *protocol.StakeTx) bool {
 	acc := storage.State[tx.Account]
 	if acc == nil {
 		// TODO: Requires a Mutex?
-		newAcc := protocol.NewAccount(tx.Account, [64]byte{}, 0, false, [256]byte{}, nil, nil)
+		newAcc := protocol.NewAccount(tx.Account, [32]byte{}, 0, false, [crypto.COMM_KEY_LENGTH_ED]byte{}, nil, nil)
 		acc = &newAcc
 		storage.WriteAccount(acc)
 	}
@@ -131,9 +131,9 @@ func verifyStakeTx(tx *protocol.StakeTx) bool {
 
 	txHash := tx.Hash()
 
-	pubKey := crypto.GetPubKeyFromAddress(acc.Address)
+	pubKey := crypto.GetPubKeyFromAddressED(acc.Address)
 
-	return ecdsa.Verify(pubKey, txHash[:], r, s)
+	return ed25519.Verify(pubKey, txHash[:], tx.Sig[:])
 }
 
 //Returns true if id is in the list of possible ids and rational value for payload parameter.

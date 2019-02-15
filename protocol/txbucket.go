@@ -6,7 +6,7 @@ import (
 )
 
 type TxBucket struct {
-	Address         [64]byte
+	Address         [32]byte
 	RelativeAmount int64
 
 	merkleRoot HashType
@@ -14,7 +14,7 @@ type TxBucket struct {
 	Transactions []*FundsTx // won't be serialized
 }
 
-func NewTxBucket(address [64]byte) *TxBucket {
+func NewTxBucket(address [32]byte) *TxBucket {
 	return &TxBucket{
 		Address:	address,
 	}
@@ -36,7 +36,7 @@ func (bucket *TxBucket) Hash() HashType {
 	}
 
 	bucketHash := struct {
-		address    [64]byte
+		address    [32]byte
 		amount     int64
 	}{
 		bucket.Address,

@@ -95,9 +95,9 @@ func getState() (state string) {
 	return state
 }
 
-func GetState() (state map[[64]byte]*protocol.Account){
+func GetState() (state map[[32]byte]*protocol.Account){
 
-	stateMap := make(map[[64]byte]*protocol.Account)
+	stateMap := make(map[[32]byte]*protocol.Account)
 
 	for _, acc := range storage.State {
 		stateMap[acc.Address] = acc
@@ -168,6 +168,57 @@ func initState() (initialBlock *protocol.Block, err error) {
 
 	return initialBlock, nil
 }
+
+func initStateED() (initialBlock *protocol.Block, err error) {
+	genesis, err := initGenesis()
+	if err != nil {
+		return nil, err
+	}
+
+	initialEpochBlock, err := initEpochBlock()
+	//Set the initialEpochBlock to the global variable 'lastEpochBlock'. This is needed to abort the POS for doing the validator assignment
+
+	//FileConnections.WriteString(fmt.Sprintf("'GENESIS: %x' -> 'EPOCH BLOCK: %x'\n",[32]byte{},initialEpochBlock.Hash[0:15]))
+
+	//Request last epoch block from the network
+	if(p2p.IsBootstrap()){
+		var eb *protocol.EpochBlock
+		eb = storage.ReadLastClosedEpochBlock()
+		lastEpochBlock = eb
+		if(lastEpochBlock == nil){
+			lastEpochBlock = initialEpochBlock
+		}
+	} else {
+		lastEpochBlock, err = getLastEpochBlock()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	storage.State = lastEpochBlock.State
+
+	//FileConnections.WriteString(fmt.Sprintf("'%x' -> 'EPOCH BLOCK: %x'\n",[32]byte{},initialEpochBlock.Hash[0:15]))
+
+	initRootAccounts(genesis)
+	err = initClosedBlocks(lastEpochBlock)
+	if err != nil {
+		return nil, err
+	}
+
+	initialBlock, err = getInitialBlock(lastEpochBlock)
+	if err != nil {
+		return nil, err
+	}
+
+	err = validateClosedBlocks()
+	if err != nil {
+		return nil, err
+	}
+
+	return initialBlock, nil
+}
+
+
 
 func initGenesis() (genesis *protocol.Genesis, err error) {
 	if genesis, err = storage.ReadGenesis(); err != nil {
@@ -243,9 +294,11 @@ func getLastEpochBlock() (lastEpochBlock *protocol.EpochBlock, err error) {
 	return eb, nil
 }
 
+
+
 func initRootAccounts(genesis *protocol.Genesis) {
 	//rootAcc := protocol.NewAccount(genesis.RootAddress, [64]byte{}, activeParameters.Staking_minimum, true, genesis.RootCommitment, nil, nil)
-	rootAcc := protocol.NewAccount(genesis.RootAddress, [64]byte{}, 4000, true, genesis.RootCommitment, nil, nil)
+	rootAcc := protocol.NewAccount(genesis.RootAddress, [32]byte{}, 4000, true, genesis.RootCommitment, nil, nil)
 	storage.State[genesis.RootAddress] = &rootAcc
 	storage.RootKeys[genesis.RootAddress] = &rootAcc
 }
@@ -318,10 +371,10 @@ func initClosedBlocks(lastEpochBlock *protocol.EpochBlock) error {
 func getInitialBlock(lastEpochBlock *protocol.EpochBlock) (initialBlock *protocol.Block, err error) {
 	if len(storage.AllClosedBlocksAsc) > 0 {
 		//Set the last closed block as the initial block
-		initialBlock = storage.AllClosedBlocksAsc[len(storage.AllClosedBlocksAsc)-1]
+		initialBlock = storage.AllClosedBlocksAscED[len(storage.AllClosedBlocksAscED)-1]
 	} else {
-		initialBlock = newBlock(lastEpochBlock.Hash, [crypto.COMM_PROOF_LENGTH]byte{}, 1) // since first epoch block is at height 0
-		commitmentProof, err := crypto.SignMessageWithRSAKey(commPrivKey, fmt.Sprint(initialBlock.Height))
+		initialBlock = newBlock(lastEpochBlock.Hash, [64]byte{}, 1) // since first epoch block is at height 0
+		commitmentProof := crypto.SignMessageWithED(commPrivKeyED, fmt.Sprint(initialBlock.Height))
 		if err != nil {
 			return nil, err
 		}
@@ -330,7 +383,7 @@ func getInitialBlock(lastEpochBlock *protocol.EpochBlock) (initialBlock *protoco
 		initialBlock.Hash = initialBlock.HashBlock()
 
 		//Append genesis block to the map and save in storage
-		storage.AllClosedBlocksAsc = append(storage.AllClosedBlocksAsc, initialBlock)
+		storage.AllClosedBlocksAscED = append(storage.AllClosedBlocksAscED, initialBlock)
 
 		storage.DeleteAllLastClosedEpochBlock()
 		storage.WriteLastClosedBlock(initialBlock)
@@ -387,7 +440,7 @@ func accStateChange(txSlice []*protocol.ContractTx) {
 	for _, tx := range txSlice {
 		acc, _ := storage.ReadAccount(tx.PubKey)
 		if acc == nil {
-			newAcc := protocol.NewAccount(tx.PubKey, tx.Issuer, 0, false, [crypto.COMM_KEY_LENGTH]byte{}, tx.Contract, tx.ContractVariables)
+			newAcc := protocol.NewAccount(tx.PubKey, tx.Issuer, 0, false, [crypto.COMM_KEY_LENGTH_ED]byte{}, tx.Contract, tx.ContractVariables)
 			storage.WriteAccount(&newAcc)
 			//RelativeStateBalance[acc.Address] = 0
 		}
@@ -414,7 +467,7 @@ func fundsStateChange(txSlice []*protocol.FundsTx) (err error) {
 
 		accSender, _ := storage.ReadAccount(tx.From)
 		if accSender == nil {
-			newFromAcc := protocol.NewAccount(tx.From, [64]byte{}, 0, false, [crypto.COMM_KEY_LENGTH]byte{}, nil, nil)
+			newFromAcc := protocol.NewAccount(tx.From, [32]byte{}, 0, false, [crypto.COMM_KEY_LENGTH_ED]byte{}, nil, nil)
 			accSender = &newFromAcc
 			storage.WriteAccount(accSender)
 			//RelativeStateBalance[accSender.Address] = 0
@@ -422,7 +475,7 @@ func fundsStateChange(txSlice []*protocol.FundsTx) (err error) {
 
 		accReceiver, _ := storage.ReadAccount(tx.To)
 		if accReceiver == nil {
-			newToAcc := protocol.NewAccount(tx.To, [64]byte{}, 0, false, [crypto.COMM_KEY_LENGTH]byte{}, nil, nil)
+			newToAcc := protocol.NewAccount(tx.To, [32]byte{}, 0, false, [crypto.COMM_KEY_LENGTH_ED]byte{}, nil, nil)
 			accReceiver = &newToAcc
 			storage.WriteAccount(accReceiver)
 			//RelativeStateBalance[accSender.Address] = 0
@@ -486,14 +539,14 @@ func applyFundsChange(txSlice []*protocol.FundsTx){
 
 		accSender, _ := storage.ReadAccount(tx.From)
 		if accSender == nil {
-			newFromAcc := protocol.NewAccount(tx.From, [64]byte{}, 0, false, [crypto.COMM_KEY_LENGTH]byte{}, nil, nil)
+			newFromAcc := protocol.NewAccount(tx.From, [32]byte{}, 0, false, [crypto.COMM_KEY_LENGTH_ED]byte{}, nil, nil)
 			accSender = &newFromAcc
 			storage.WriteAccount(accSender)
 		}
 
 		accReceiver, _ := storage.ReadAccount(tx.To)
 		if accReceiver == nil {
-			newToAcc := protocol.NewAccount(tx.To, [64]byte{}, 0, false, [crypto.COMM_KEY_LENGTH]byte{}, nil, nil)
+			newToAcc := protocol.NewAccount(tx.To, [32]byte{}, 0, false, [crypto.COMM_KEY_LENGTH_ED]byte{}, nil, nil)
 			accReceiver = &newToAcc
 			storage.WriteAccount(accReceiver)
 		}
@@ -638,7 +691,7 @@ func applyStakeChange(txSlice []*protocol.StakeTx, height uint32) (err error) {
 	return nil
 }
 
-func collectTxFees(contractTxSlice []*protocol.ContractTx, fundsTxSlice []*protocol.FundsTx, configTxSlice []*protocol.ConfigTx, stakeTxSlice []*protocol.StakeTx, minerAddress [64]byte) (err error) {
+func collectTxFees(contractTxSlice []*protocol.ContractTx, fundsTxSlice []*protocol.FundsTx, configTxSlice []*protocol.ConfigTx, stakeTxSlice []*protocol.StakeTx, minerAddress [32]byte) (err error) {
 	var tmpContractTx []*protocol.ContractTx
 	var tmpFundsTx []*protocol.FundsTx
 	var tmpConfigTx []*protocol.ConfigTx
@@ -724,7 +777,7 @@ func collectTxFees(contractTxSlice []*protocol.ContractTx, fundsTxSlice []*proto
 	return nil
 }
 
-func collectBlockReward(reward uint64, minerAddress [64]byte) (err error) {
+func collectBlockReward(reward uint64, minerAddress [32]byte) (err error) {
 	var miner *protocol.Account
 	miner, err = storage.ReadAccount(minerAddress)
 
@@ -743,7 +796,7 @@ func collectBlockReward(reward uint64, minerAddress [64]byte) (err error) {
 
 func collectSlashReward(reward uint64, block *protocol.Block) (err error) {
 	//Check if proof is provided. If proof was incorrect, prevalidation would already have failed.
-	if block.SlashedAddress != [64]byte{} || block.ConflictingBlockHash1 != [32]byte{} || block.ConflictingBlockHash2 != [32]byte{} {
+	if block.SlashedAddress != [32]byte{} || block.ConflictingBlockHash1 != [32]byte{} || block.ConflictingBlockHash2 != [32]byte{} {
 		var minerAcc, slashedAcc *protocol.Account
 		minerAcc, err = storage.ReadAccount(block.Beneficiary)
 		slashedAcc, err = storage.ReadAccount(block.SlashedAddress)

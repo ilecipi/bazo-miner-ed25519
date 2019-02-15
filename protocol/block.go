@@ -27,7 +27,7 @@ type Block struct {
 	NrElementsBF uint16
 	BloomFilter  *bloom.BloomFilter
 	Height       uint32
-	Beneficiary  [64]byte
+	Beneficiary  [32]byte
 
 	//Body
 	Nonce                 [8]byte
@@ -37,11 +37,11 @@ type Block struct {
 	NrContractTx          uint16
 	NrFundsTx             uint16
 	NrStakeTx             uint16
-	SlashedAddress        [64]byte
-	CommitmentProof       [crypto.COMM_PROOF_LENGTH]byte
+	SlashedAddress        [32]byte
+	CommitmentProof       [64]byte
 	ConflictingBlockHash1 [32]byte
 	ConflictingBlockHash2 [32]byte
-	StateCopy             map[[64]byte]*Account //won't be serialized, just keeping track of local state changes
+	StateCopy             map[[32]byte]*Account //won't be serialized, just keeping track of local state changes
 
 	ContractTxData  [][32]byte
 	FundsTxData  	[][32]byte
@@ -49,16 +49,18 @@ type Block struct {
 	StakeTxData  	[][32]byte
 }
 
+
 func NewBlock(prevHash [32]byte, height uint32) *Block {
 	newBlock := Block{
 		PrevHash: prevHash,
 		Height:   height,
 	}
 
-	newBlock.StateCopy = make(map[[64]byte]*Account)
+	newBlock.StateCopy = make(map[[32]byte]*Account)
 
 	return &newBlock
 }
+
 
 func (block *Block) HashBlock() [32]byte {
 	if block == nil {
@@ -71,9 +73,9 @@ func (block *Block) HashBlock() [32]byte {
 		timestamp             int64
 		merkleRoot            [32]byte
 		merklePatriciaRoot	  [32]byte
-		beneficiary           [64]byte
-		commitmentProof       [crypto.COMM_PROOF_LENGTH]byte
-		slashedAddress        [64]byte
+		beneficiary           [32]byte
+		commitmentProof       [crypto.COMM_PROOF_LENGTH_ED]byte
+		slashedAddress        [32]byte
 		conflictingBlockHash1 [32]byte
 		conflictingBlockHash2 [32]byte
 	}{
@@ -91,7 +93,8 @@ func (block *Block) HashBlock() [32]byte {
 	return SerializeHashContent(blockHash)
 }
 
-func (block *Block) InitBloomFilter(txPubKeys [][64]byte) {
+
+func (block *Block) InitBloomFilter(txPubKeys [][32]byte) {
 	block.NrElementsBF = uint16(len(txPubKeys))
 
 	m, k := calculateBloomFilterParams(float64(len(txPubKeys)), BLOOM_FILTER_ERROR_RATE)
@@ -102,6 +105,7 @@ func (block *Block) InitBloomFilter(txPubKeys [][64]byte) {
 
 	block.BloomFilter = filter
 }
+
 
 func (block *Block) GetSize() uint64 {
 	size :=
@@ -157,6 +161,7 @@ func (block *Block) Encode() []byte {
 	return buffer.Bytes()
 }
 
+
 func (block *Block) EncodeHeader() []byte {
 	if block == nil {
 		return nil
@@ -179,6 +184,7 @@ func (block *Block) EncodeHeader() []byte {
 	return buffer.Bytes()
 }
 
+
 func (block *Block) Decode(encoded []byte) (b *Block) {
 	if encoded == nil {
 		return nil
@@ -190,6 +196,7 @@ func (block *Block) Decode(encoded []byte) (b *Block) {
 	decoder.Decode(&decoded)
 	return &decoded
 }
+
 
 func (block Block) String() string {
 	return fmt.Sprintf("\nHash: %x\n"+

@@ -17,10 +17,10 @@ type Context interface {
 	GetContract() []byte
 	GetContractVariable(index int) ([]byte, error)
 	SetContractVariable(index int, value []byte) error
-	GetAddress() [64]byte
-	GetIssuer() [64]byte
+	GetAddress() [32]byte
+	GetIssuer() [32]byte
 	GetBalance() uint64
-	GetSender() [64]byte
+	GetSender() [32]byte
 	GetAmount() uint64
 	GetTransactionData() []byte
 	GetFee() uint64

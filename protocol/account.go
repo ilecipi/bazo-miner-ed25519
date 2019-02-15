@@ -8,24 +8,24 @@ import (
 )
 
 type Account struct {
-	Address            [64]byte              // 64 Byte
-	Issuer             [64]byte              // 64 Byte
+	Address            [32]byte              // 64 Byte
+	Issuer             [32]byte              // 64 Byte
 	Balance            uint64                // 8 Byte
 	TxCnt              uint32                // 4 Byte
 	IsStaking          bool                  // 1 Byte
-	CommitmentKey      [crypto.COMM_KEY_LENGTH]byte // represents the modulus N of the RSA public key
+	CommitmentKey      [crypto.COMM_KEY_LENGTH_ED]byte // represents the modulus N of the RSA public key
 	StakingBlockHeight uint32                // 4 Byte
 	Contract           []byte                // Arbitrary length
 	ContractVariables  []ByteArray           // Arbitrary length
 }
 
-func NewAccount(address [64]byte,
-	issuer [64]byte,
+func NewAccount(address [32]byte,
+	issuer [32]byte,
 	balance uint64,
 	isStaking bool,
-	commitmentKey [crypto.COMM_KEY_LENGTH]byte,
+	commitmentKey [crypto.COMM_KEY_LENGTH_ED]byte,
 	contract []byte,
-	contractVariables []ByteArray) Account {
+	contractVariables []ByteArray) Account{
 
 	newAcc := Account{
 		address,
@@ -41,6 +41,7 @@ func NewAccount(address [64]byte,
 
 	return newAcc
 }
+
 
 func (acc *Account) Hash() [32]byte {
 	if acc == nil {
@@ -71,6 +72,7 @@ func (acc *Account) Encode() []byte {
 	gob.NewEncoder(buffer).Encode(encoded)
 	return buffer.Bytes()
 }
+
 
 func (*Account) Decode(encoded []byte) (acc *Account) {
 	var decoded Account

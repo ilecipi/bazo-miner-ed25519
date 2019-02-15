@@ -8,24 +8,24 @@ import (
 )
 
 type StateTransition struct {
-	RelativeStateChange			map[[64]byte]*RelativeAccount
+	RelativeStateChange			map[[32]byte]*RelativeAccount
 	Height						int
 	ShardID						int
 }
 
 type RelativeAccount struct {
-	Address            [64]byte              // 64 Byte
-	Issuer             [64]byte              // 64 Byte
+	Address            [32]byte              // 64 Byte
+	Issuer             [32]byte              // 64 Byte
 	Balance            int64                // 8 Byte
 	TxCnt              int32                // 4 Byte
 	IsStaking          bool                  // 1 Byte
-	CommitmentKey      [crypto.COMM_KEY_LENGTH]byte // represents the modulus N of the RSA public key
+	CommitmentKey      [crypto.COMM_KEY_LENGTH_ED]byte// represents the modulus N of the RSA public key
 	StakingBlockHeight int32                // 4 Byte
 	Contract           []byte                // Arbitrary length
 	ContractVariables  []ByteArray           // Arbitrary length
 }
 
-func NewStateTransition(stateChange map[[64]byte]*RelativeAccount, height int, shardid int) *StateTransition {
+func NewStateTransition(stateChange map[[32]byte]*RelativeAccount, height int, shardid int) *StateTransition {
 	newTransition := StateTransition{
 		stateChange,
 		height,
@@ -35,11 +35,11 @@ func NewStateTransition(stateChange map[[64]byte]*RelativeAccount, height int, s
 	return &newTransition
 }
 
-func NewRelativeAccount(address [64]byte,
-	issuer [64]byte,
+func NewRelativeAccount(address [32]byte,
+	issuer [32]byte,
 	balance int64,
 	isStaking bool,
-	commitmentKey [crypto.COMM_KEY_LENGTH]byte,
+	commitmentKey [crypto.COMM_KEY_LENGTH_ED]byte,
 	contract []byte,
 	contractVariables []ByteArray) RelativeAccount {
 
@@ -64,7 +64,7 @@ func (st *StateTransition) HashTransition() [32]byte {
 	}
 
 	stHash := struct {
-		RelativeStateChange				  map[[64]byte]*RelativeAccount
+		RelativeStateChange				  map[[32]byte]*RelativeAccount
 		Height				  			  int
 		ShardID							  int
 	}{

@@ -67,11 +67,11 @@ func (c *Context) PersistChanges() {
 	}
 }
 
-func (c *Context) GetAddress() [64]byte {
+func (c *Context) GetAddress() [32]byte {
 	return c.Address
 }
 
-func (c *Context) GetIssuer() [64]byte {
+func (c *Context) GetIssuer() [32]byte {
 	return c.Issuer
 }
 
@@ -79,7 +79,7 @@ func (c *Context) GetBalance() uint64 {
 	return c.Balance
 }
 
-func (c *Context) GetSender() [64]byte {
+func (c *Context) GetSender() [32]byte {
 	return c.From
 }
 

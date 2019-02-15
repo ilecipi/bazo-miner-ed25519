@@ -12,15 +12,16 @@ import (
 var (
 	db                 *bolt.DB
 	logger             *log.Logger
-	State              = make(map[[64]byte]*protocol.Account)
+	State              = make(map[[32]byte]*protocol.Account)
 	//This map keeps track of the relative account adjustments within a shard, such as balance, txcount and stakingheight
-	PreviousState				= make(map[[64]byte]*protocol.Account)
-	RelativeState				= make(map[[64]byte]*protocol.RelativeAccount)
-	RootKeys           = make(map[[64]byte]*protocol.Account)
+	PreviousState				= make(map[[32]byte]*protocol.Account)
+	RelativeState				= make(map[[32]byte]*protocol.RelativeAccount)
+	RootKeys           = make(map[[32]byte]*protocol.Account)
 	txMemPool          = make(map[[32]byte]protocol.Transaction)
 	ReceivedBlockStash = protocol.NewBlockStash()
 	ReceivedStateStash = protocol.NewStateStash()
 	AllClosedBlocksAsc []*protocol.Block
+	AllClosedBlocksAscED []*protocol.Block
 	BootstrapServer    string
 	Buckets			   []string
 	memPoolMutex	   = &sync.Mutex{}

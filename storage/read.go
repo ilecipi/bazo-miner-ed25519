@@ -130,7 +130,7 @@ func GetMemPoolSize() int {
 	return len(txMemPool)
 }
 
-func ReadState() (state map[[64]byte]*protocol.Account){
+func ReadState() (state map[[32]byte]*protocol.Account){
 	return State
 }
 
@@ -176,7 +176,7 @@ func readClosedTx(bucketName string, hash [32]byte) (encodedTx []byte) {
 	return encodedTx
 }
 
-func ReadAccount(pubKey [64]byte) (acc *protocol.Account, err error) {
+func ReadAccount(pubKey [32]byte) (acc *protocol.Account, err error) {
 	if acc = State[pubKey]; acc != nil {
 		return acc, nil
 	} else {
@@ -184,7 +184,7 @@ func ReadAccount(pubKey [64]byte) (acc *protocol.Account, err error) {
 	}
 }
 
-func ReadRootAccount(pubKey [64]byte) (acc *protocol.Account, err error) {
+func ReadRootAccount(pubKey [32]byte) (acc *protocol.Account, err error) {
 	if IsRootKey(pubKey) {
 		acc, err = ReadAccount(pubKey)
 		return acc, err

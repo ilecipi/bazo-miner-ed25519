@@ -15,9 +15,9 @@ const (
 
 type ContractTx struct {
 	Header            byte
-	Issuer            [64]byte
+	Issuer            [32]byte
 	Fee               uint64
-	PubKey            [64]byte
+	PubKey            [32]byte
 	Sig               [64]byte
 	Contract          []byte
 	ContractVariables []ByteArray
@@ -61,9 +61,9 @@ func (tx *ContractTx) Hash() [32]byte {
 
 	txHash := struct {
 		Header            byte
-		Issuer            [64]byte
+		Issuer            [32]byte
 		Fee               uint64
-		PubKey            [64]byte
+		PubKey            [32]byte
 		Contract          []byte
 		ContractVariables []ByteArray
 	}{
