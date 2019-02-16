@@ -2,10 +2,10 @@ package protocol
 
 import (
 	"bytes"
-	"crypto/ecdsa"
-	"crypto/rand"
 	"encoding/gob"
 	"fmt"
+	"golang.org/x/crypto/ed25519"
+
 )
 
 const (
@@ -25,7 +25,7 @@ type FundsTx struct {
 	Data   []byte
 }
 
-func ConstrFundsTx(header byte, amount uint64, fee uint64, txCnt uint32, from, to [32]byte, sigKey *ecdsa.PrivateKey, data []byte) (tx *FundsTx, err error) {
+func ConstrFundsTx(header byte, amount uint64, fee uint64, txCnt uint32, from, to [32]byte, sigKey ed25519.PrivateKey, data []byte) (tx *FundsTx, err error) {
 	tx = new(FundsTx)
 	tx.Header = header
 	tx.From = from
@@ -34,16 +34,13 @@ func ConstrFundsTx(header byte, amount uint64, fee uint64, txCnt uint32, from, t
 	tx.Fee = fee
 	tx.TxCnt = txCnt
 	tx.Data = data
-
 	txHash := tx.Hash()
 
-	r, s, err := ecdsa.Sign(rand.Reader, sigKey, txHash[:])
-	if err != nil {
-		return nil, err
+	signature := ed25519.Sign(sigKey, txHash[:])
+	if signature == nil {
+		return tx, nil
 	}
-
-	copy(tx.Sig[32-len(r.Bytes()):32], r.Bytes())
-	copy(tx.Sig[64-len(s.Bytes()):], s.Bytes())
+	copy(tx.Sig[:], signature[:])
 
 	return tx, nil
 }

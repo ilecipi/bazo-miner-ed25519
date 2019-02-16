@@ -369,7 +369,7 @@ func initClosedBlocks(lastEpochBlock *protocol.EpochBlock) error {
 }
 
 func getInitialBlock(lastEpochBlock *protocol.EpochBlock) (initialBlock *protocol.Block, err error) {
-	if len(storage.AllClosedBlocksAsc) > 0 {
+	if len(storage.AllClosedBlocksAscED) > 0 {
 		//Set the last closed block as the initial block
 		initialBlock = storage.AllClosedBlocksAscED[len(storage.AllClosedBlocksAscED)-1]
 	} else {

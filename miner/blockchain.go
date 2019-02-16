@@ -87,9 +87,8 @@ func InitFirstStartED(wallet ed25519.PublicKey, commitment ed25519.PrivateKey) e
 	FileConnections.WriteString(fmt.Sprintf(`"GENESIS \n Hash : %x"`+`[color = green, shape = hexagon]`+"\n",hashGenesis[0:8]))
 	FileConnections.WriteString(fmt.Sprintf(`"EPOCH BLOCK: \n Hash : %x \n Height : %d \nMPT : %x"`+`[color = red, shape = box]`+"\n",initialEpochBlock.Hash[0:8],initialEpochBlock.Height,initialEpochBlock.MerklePatriciaRoot[0:8]))
 	//TODO
-	//return Init(wallet, commitment)
+	return InitED(wallet, commitment)
 
-	return nil
 }
 
 //Miner entry point
