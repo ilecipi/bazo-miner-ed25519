@@ -35,8 +35,7 @@ var (
 	ReceivedBlocksAtHeightX int //This counter is used to sync block heights among shards
 	LastShardHashes         [][32]byte // This slice stores the hashes of the last blocks from the other shards, needed to create the next epoch block
 	LastShardHashesMap 		= make(map[[32]byte][32]byte)
-	ValidatorShardMap       *protocol.ValShardMapping // This map keeps track of the validator assignment to the shards; int: shard ID; [64]byte: validator address
-	ValidatorShardMapED       *protocol.ValShardMappingED // This map keeps track of the validator assignment to the shards; int: shard ID; [64]byte: validator address
+	ValidatorShardMap       *protocol.ValShardMapping // This map keeps track of the validator assignment to the shards; int: shard ID; [32]byte: validator address
 	FileConnections   	       *os.File
 	FileConnectionsLog         *os.File
 	TransactionPayloadOut 	*protocol.TransactionPayload
@@ -152,7 +151,7 @@ func InitED(wallet ed25519.PublicKey, commitment ed25519.PrivateKey) error {
 				storage.State = lastEpochBlock.State
 				NumberOfShards = lastEpochBlock.NofShards
 				walletED := crypto.GetAddressFromPubKeyED(wallet)
-				ThisShardID = ValidatorShardMapED.ValMapping[walletED] //Save my ShardID
+				ThisShardID = ValidatorShardMap.ValMapping[walletED] //Save my ShardID
 				FirstStartAfterEpoch = true
 				epochMining(lastEpochBlock.Hash,lastEpochBlock.Height) //start mining based on the received Epoch Block
 			}
@@ -180,7 +179,7 @@ func InitED(wallet ed25519.PublicKey, commitment ed25519.PrivateKey) error {
 		//broadcastValidatorShardMapping(ValidatorShardMap)
 	}
 	walletED := crypto.GetAddressFromPubKeyED(wallet)
-	ThisShardID = ValidatorShardMapED.ValMapping[walletED]
+	ThisShardID = ValidatorShardMap.ValMapping[walletED]
 
 	//logger.Printf("Entering epoch mining for the first time...")
 	//FileConnectionsLog.WriteString(fmt.Sprintf("Entering epoch mining for the first time..."))
