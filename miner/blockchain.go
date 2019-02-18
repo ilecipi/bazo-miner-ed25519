@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bazo-blockchain/bazo-miner/protocol"
+"github.com/bazo-blockchain/bazo-miner/protocol"
 	"github.com/bazo-blockchain/bazo-miner/storage"
 )
 
