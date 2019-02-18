@@ -26,6 +26,9 @@ func processIncomingMsg(p *peer, header *Header, payload []byte) {
 	case TIME_BRDCST:
 		processTimeRes(p, payload)
 
+	case IOTTX_BRDCST:
+		processIotTxBrdcst(p, payload, IOTTX_BRDCST)
+
 		//REQUESTS
 	case FUNDSTX_REQ:
 		txRes(p, payload, FUNDSTX_REQ)

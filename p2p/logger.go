@@ -63,6 +63,11 @@ func InitLogging() {
 	LogMapping[102] = "CLIENT_PING"
 	LogMapping[103] = "CLIENT_PONG"
 
+	LogMapping[105] = "IOTTX_BRDCST"
+	LogMapping[106] = "IOTTX_REQ"
+	LogMapping[107] = "IOTTX_RES"
+
+
 	LogMapping[110] = "NOT_FOUND"
 
 	LogMapping[120] = "STATE_REQ"

@@ -61,6 +61,12 @@ func WriteOpenTx(transaction protocol.Transaction) {
 	txMemPool[transaction.Hash()] = transaction
 }
 
+func WriteOpenIoTTx(transaction protocol.Iot) {
+	memPoolMutex.Lock()
+	defer memPoolMutex.Unlock()
+	txMemPool[transaction.Hash()] = transaction
+}
+
 func WriteClosedTx(transaction protocol.Transaction) error {
 	var bucket string
 	switch transaction.(type) {

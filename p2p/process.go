@@ -77,6 +77,53 @@ func processTxBrdcst(p *peer, payload []byte, brdcstType uint8) {
 	minerBrdcstMsg <- toBrdcst
 }
 
+func processIotTxBrdcst(p *peer, payload []byte, brdcstType uint8) {
+	var tx protocol.Iot
+	//Make sure the transaction can be properly decoded, verification is done at a later stage to reduce latency
+	switch brdcstType {
+	case IOTTX_BRDCST:
+		var sTx *protocol.IotTx
+		sTx = sTx.Decode(payload)
+		if sTx == nil {
+			return
+		}
+		tx = sTx
+	}
+
+	//Response tx acknowledgment if the peer is a client
+	if !peers.minerConns[p] {
+		//TODO: check if TX_BRDCST_ACK can still be used here
+		packet := BuildPacket(TX_BRDCST_ACK, nil)
+		sendData(p, packet)
+	}
+
+	if storage.ReadOpenTx(tx.Hash()) != nil {
+		logger.Printf("Received transaction (%x) already in the mempool.\n", tx.Hash())
+		FileConnectionsLog.WriteString(fmt.Sprintf("Received transaction (%x) already in the mempool.\n", tx.Hash()))
+		return
+	}
+	if storage.ReadClosedTx(tx.Hash()) != nil {
+		logger.Printf("Received transaction (%x) already validated.\n", tx.Hash())
+		FileConnectionsLog.WriteString(fmt.Sprintf("Received transaction (%x) already validated.\n", tx.Hash()))
+		return
+	}
+
+	//Write to mempool and rebroadcast
+	logger.Printf("Writing transaction (%x) in the mempool.\n", tx.Hash())
+	FileConnectionsLog.WriteString(fmt.Sprintf("Writing transaction (%x) in the mempool.\n", tx.Hash()))
+	logger.Printf("Writing transaction at time: %d\n", time.Now().Unix())
+	FileConnectionsLog.WriteString(fmt.Sprintf("Writing transaction at time: %d\n", time.Now().Unix()))
+
+	storage.WriteOpenTx(tx)
+
+	logger.Printf("MemPool Size: %d\n", storage.GetMemPoolSize())
+	FileConnectionsLog.WriteString(fmt.Sprintf("MemPool Size: %d\n", storage.GetMemPoolSize()))
+
+	toBrdcst := BuildPacket(brdcstType, payload)
+	minerBrdcstMsg <- toBrdcst
+}
+
+
 func processTimeRes(p *peer, payload []byte) {
 	time := int64(binary.BigEndian.Uint64(payload))
 	//Concurrent writes need to be protected.

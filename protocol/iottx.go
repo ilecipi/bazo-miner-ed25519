@@ -106,3 +106,7 @@ func (tx IotTx) String() string {
 		tx.Data,
 	)
 }
+
+func (tx *IotTx) Size() uint64  { return 123 }
+func (tx *IotTx) TxFee() uint64 { return 0 }
+
