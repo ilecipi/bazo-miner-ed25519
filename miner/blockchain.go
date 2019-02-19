@@ -99,7 +99,7 @@ func InitED(wallet ed25519.PublicKey, commitment ed25519.PrivateKey) error {
 
 	FileConnections, _ = os.OpenFile(fmt.Sprintf("hash-prevhash-%v.txt",strings.Split(p2p.Ipport, ":")[1]), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	FileConnectionsLog, _ = os.OpenFile(fmt.Sprintf("hlog-for-%v.txt",strings.Split(p2p.Ipport, ":")[1]), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	//validatorAccAddressED := crypto.GetPubKeyFromAddressED(wallet)
+	validatorAccAddress = crypto.GetAddressFromPubKeyED(wallet)
 	commPrivKey = commitment
 
 	//Set up logger.

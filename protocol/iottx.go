@@ -5,7 +5,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"golang.org/x/crypto/ed25519"
-
+	"unsafe"
 )
 
 //when we broadcast transactions we need a way to distinguish with a type
@@ -107,6 +107,9 @@ func (tx IotTx) String() string {
 	)
 }
 
-func (tx *IotTx) Size() uint64  { return 123 }
+func (tx *IotTx) Size() uint64  {
+	size := int(unsafe.Sizeof(*tx))
+	size += len(tx.Data)
+	return uint64(size)}
 func (tx *IotTx) TxFee() uint64 { return 0 }
 
