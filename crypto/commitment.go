@@ -29,7 +29,7 @@ const (
 
 func ExtractCommKeyFromFile(filename string) (privKey ed25519.PrivateKey, err error) {
 	if _, err = os.Stat(filename); os.IsNotExist(err) {
-		err = CreateRSAKeyFile(filename)
+		err = CreateCommEDKeyFile(filename)
 		if err != nil {
 			return privKey, err
 		}
@@ -42,25 +42,29 @@ func ExtractCommKeyFromFile(filename string) (privKey ed25519.PrivateKey, err er
 	defer filehandle.Close()
 
 	scanner := bufio.NewScanner(filehandle)
-
+	privKeyStr:= nextLine(scanner);
+	privKeyTmp, err:= base64.StdEncoding.DecodeString(privKeyStr)
+	privKey = privKeyTmp[:]
+	pubKey := ed25519.PublicKey{}
+	pubKey = privKeyTmp[32:]
 	//strModulus := nextLine(scanner)
 	//strPrivExponent := nextLine(scanner)
-	strPrimes := make([]string, COMM_NOF_PRIMES)
-	for i := 0; i < COMM_NOF_PRIMES; i++ {
-		strPrimes[i] = nextLine(scanner)
-	}
+	//strPrimes := make([]string, COMM_NOF_PRIMES)
+	//for i := 0; i < COMM_NOF_PRIMES; i++ {
+	//	strPrimes[i] = nextLine(scanner)
+	//}
 
-	if scanErr := scanner.Err(); scanErr != nil || err != nil {
-		return privKey, errors.New(fmt.Sprintf("Could not read key from file: %v", err))
-	}
-	pubKey := ed25519.PublicKey{}
-	pubKey, privKey, err = CreateCommPrivKeyED()
+	//if scanErr := scanner.Err(); scanErr != nil || err != nil {
+	//	return privKey, errors.New(fmt.Sprintf("Could not read key from file: %v", err))
+	//}
+	//pubKey := ed25519.PublicKey{}
+	//pubKey, privKey, err = CreateCommPrivKeyED()
 	if err != nil {
 		return privKey, err
 	}
 
 	return privKey, VerifyCommEDKey(privKey, pubKey)
-}
+	}
 
 
 
@@ -259,6 +263,22 @@ func CreateRSAKeyFile(filename string) error {
 	return err
 }
 
+func CreateCommEDKeyFile(filename string) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+
+	pubKey,privKey, err := CreateCommPrivKeyED()
+	if err != nil {
+		return err
+	}
+	fmt.Println(pubKey)
+
+	_, err = file.WriteString(stringifyEDKey(privKey))
+	return err
+}
+
 func GenerateRSAKey() (*rsa.PrivateKey, error) {
 	return rsa.GenerateMultiPrimeKey(rand.Reader, COMM_NOF_PRIMES, COMM_KEY_BITS)
 }
@@ -273,6 +293,12 @@ func stringifyRSAKey(key *rsa.PrivateKey) string {
 		keyString += "\n" + base64.StdEncoding.EncodeToString(prime.Bytes())
 	}
 
+	return keyString
+}
+
+func stringifyEDKey(key ed25519.PrivateKey) string {
+	keyString :=
+		base64.StdEncoding.EncodeToString(key)
 	return keyString
 }
 
