@@ -37,6 +37,7 @@ type Block struct {
 	NrContractTx          uint16
 	NrFundsTx             uint16
 	NrStakeTx             uint16
+	NrIotTx            	  uint16
 	SlashedAddress        [32]byte
 	CommitmentProof       [64]byte
 	ConflictingBlockHash1 [32]byte
@@ -47,6 +48,8 @@ type Block struct {
 	FundsTxData  	[][32]byte
 	ConfigTxData 	[][32]byte
 	StakeTxData  	[][32]byte
+	IotTxData  		[][32]byte
+
 }
 
 
@@ -113,7 +116,8 @@ func (block *Block) GetSize() uint64 {
 			int(block.NrContractTx)*TXHASH_LEN +
 			int(block.NrFundsTx)*TXHASH_LEN +
 			int(block.NrConfigTx)*TXHASH_LEN +
-			int(block.NrStakeTx)*TXHASH_LEN
+			int(block.NrStakeTx)*TXHASH_LEN +
+			int(block.NrIotTx)*TXHASH_LEN
 
 	if block.BloomFilter != nil {
 		encodedBF, _ := block.BloomFilter.GobEncode()
@@ -142,6 +146,7 @@ func (block *Block) Encode() []byte {
 		NrFundsTx:             block.NrFundsTx,
 		NrConfigTx:            block.NrConfigTx,
 		NrStakeTx:             block.NrStakeTx,
+		NrIotTx:           	   block.NrIotTx,
 		NrElementsBF:          block.NrElementsBF,
 		BloomFilter:           block.BloomFilter,
 		SlashedAddress:        block.SlashedAddress,
@@ -154,6 +159,7 @@ func (block *Block) Encode() []byte {
 		FundsTxData:           block.FundsTxData,
 		ConfigTxData:          block.ConfigTxData,
 		StakeTxData:           block.StakeTxData,
+		IotTxData:			   block.IotTxData,
 	}
 
 	buffer := new(bytes.Buffer)
@@ -211,6 +217,7 @@ func (block Block) String() string {
 		"Amount of contractTx: %v\n"+
 		"Amount of configTx: %v\n"+
 		"Amount of stakeTx: %v\n"+
+		"Amount of iotTx: %v\n"+
 		"Height: %d\n"+
 		"Commitment Proof: %x\n"+
 		"Slashed Address:%x\n"+
@@ -228,6 +235,7 @@ func (block Block) String() string {
 		block.NrContractTx,
 		block.NrConfigTx,
 		block.NrStakeTx,
+		block.NrIotTx,
 		block.Height,
 		block.CommitmentProof[0:8],
 		block.SlashedAddress[0:8],

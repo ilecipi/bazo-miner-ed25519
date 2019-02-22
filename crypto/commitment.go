@@ -27,6 +27,43 @@ const (
 
 )
 
+func ExtractCommKeyFromFile(filename string) (privKey ed25519.PrivateKey, err error) {
+	if _, err = os.Stat(filename); os.IsNotExist(err) {
+		err = CreateRSAKeyFile(filename)
+		if err != nil {
+			return privKey, err
+		}
+	}
+
+	filehandle, err := os.Open(filename)
+	if err != nil {
+		return privKey, errors.New(fmt.Sprintf("%v", err))
+	}
+	defer filehandle.Close()
+
+	scanner := bufio.NewScanner(filehandle)
+
+	//strModulus := nextLine(scanner)
+	//strPrivExponent := nextLine(scanner)
+	strPrimes := make([]string, COMM_NOF_PRIMES)
+	for i := 0; i < COMM_NOF_PRIMES; i++ {
+		strPrimes[i] = nextLine(scanner)
+	}
+
+	if scanErr := scanner.Err(); scanErr != nil || err != nil {
+		return privKey, errors.New(fmt.Sprintf("Could not read key from file: %v", err))
+	}
+	pubKey := ed25519.PublicKey{}
+	pubKey, privKey, err = CreateCommPrivKeyED()
+	if err != nil {
+		return privKey, err
+	}
+
+	return privKey, VerifyCommEDKey(privKey, pubKey)
+}
+
+
+
 func ExtractRSAKeyFromFile(filename string) (privKey *rsa.PrivateKey, err error) {
 
 	if _, err = os.Stat(filename); os.IsNotExist(err) {
@@ -106,6 +143,20 @@ func VerifyRSAKey(privKey *rsa.PrivateKey) error {
 	return nil
 }
 
+func VerifyCommEDKey(privKey ed25519.PrivateKey, pubKey ed25519.PublicKey) error {
+	message := "Test"
+	cipher := SignMessageWithED(privKey, message)
+	if len(cipher)==0  {
+		return errors.New(fmt.Sprintf("Could not sign message. Failed"))
+	}
+
+	valid := ed25519.Verify(pubKey, []byte(message), cipher)
+	if valid == false {
+		return errors.New(fmt.Sprintf("Could not verify message. Failed"))
+	}
+	return nil
+}
+
 func CreateRSAPubKeyFromBytes(bytModulus [COMM_KEY_LENGTH]byte) (pubKey *rsa.PublicKey, err error) {
 	modulus := new(big.Int).SetBytes(bytModulus[:])
 	pubKey = new(rsa.PublicKey)
@@ -141,6 +192,11 @@ func CreateRSAPrivKeyFromBase64(strModulus string, strPrivExponent string, strPr
 	privKey.Precompute()
 	return
 }
+
+func CreateCommPrivKeyED() (pubKey ed25519.PublicKey, privKey ed25519.PrivateKey,  err error) {
+	return ed25519.GenerateKey(rand.Reader)
+}
+
 
 func SignMessageWithRSAKey(privKey *rsa.PrivateKey, msg string) (fixedSig [COMM_PROOF_LENGTH]byte, err error) {
 	hashed := sha256.Sum256([]byte(msg))

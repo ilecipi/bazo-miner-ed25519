@@ -15,9 +15,10 @@ type TransactionPayload struct {
 	FundsTxData  	[][32]byte
 	ConfigTxData 	[][32]byte
 	StakeTxData  	[][32]byte
+	IotTxData		[][32]byte
 }
 
-func NewTransactionPayload(shardID int, height int, contractTx [][32]byte, fundsTx [][32]byte, configTx [][32]byte, stakeTx [][32]byte) *TransactionPayload {
+func NewTransactionPayload(shardID int, height int, contractTx [][32]byte, fundsTx [][32]byte, configTx [][32]byte, stakeTx [][32]byte, iotTx [][32]byte) *TransactionPayload {
 	newPayload := TransactionPayload{
 		ShardID:				shardID,
 		Height:					height,
@@ -25,6 +26,7 @@ func NewTransactionPayload(shardID int, height int, contractTx [][32]byte, funds
 		FundsTxData: 			fundsTx,
 		ConfigTxData: 			configTx,
 		StakeTxData: 			stakeTx,
+		IotTxData:				iotTx,
 	}
 
 	return &newPayload
@@ -42,6 +44,7 @@ func (txPayload *TransactionPayload) HashPayload() [32]byte {
 		fundsTxData              [][32]byte
 		configTxData             [][32]byte
 		stakeTxData              [][32]byte
+		IotTxData				 [][32]byte
 	}{
 		txPayload.ShardID,
 		txPayload.Height,
@@ -49,13 +52,14 @@ func (txPayload *TransactionPayload) HashPayload() [32]byte {
 		txPayload.FundsTxData,
 		txPayload.ConfigTxData,
 		txPayload.StakeTxData,
+					txPayload.IotTxData,
 	}
 	return SerializeHashContent(payloadHash)
 }
 
 func (txPayload *TransactionPayload) GetPayloadSize() int {
 	size :=
-		len(txPayload.ContractTxData) + len(txPayload.FundsTxData) + len(txPayload.ConfigTxData) + len(txPayload.StakeTxData)
+		len(txPayload.ContractTxData) + len(txPayload.FundsTxData) + len(txPayload.ConfigTxData) + len(txPayload.StakeTxData) + len(txPayload.IotTxData)
 	return size
 }
 
@@ -71,6 +75,7 @@ func (txPayload *TransactionPayload) EncodePayload() []byte {
 		FundsTxData:           txPayload.FundsTxData,
 		ConfigTxData:          txPayload.ConfigTxData,
 		StakeTxData:           txPayload.StakeTxData,
+		IotTxData:			   txPayload.IotTxData,
 	}
 
 	buffer := new(bytes.Buffer)
@@ -142,6 +147,16 @@ func (txPayload TransactionPayload) PayloadToString() (payload string) {
 		payload += "\n=== Stake Tx ==="
 
 		for _, tx := range txPayload.StakeTxData {
+			payload += fmt.Sprintf("\n%x", tx[:8])
+		}
+	}
+
+	if(len(txPayload.IotTxData) == 0){
+		payload += "\n=== NO IoT Tx ==="
+	} else {
+		payload += "\n=== IoT Tx ==="
+
+		for _, tx := range txPayload.IotTxData {
 			payload += fmt.Sprintf("\n%x", tx[:8])
 		}
 	}

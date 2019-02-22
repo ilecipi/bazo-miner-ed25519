@@ -111,6 +111,9 @@ func Start(args *startArgs) error {
 	}
 
 	//commPrivKey, err := crypto.ExtractRSAKeyFromFile(args.dataDirectory + "/" + commitment)
+	commPrivKey, err := crypto.ExtractCommKeyFromFile(args.dataDirectory + "/" + commitment)
+	fmt.Println(commPrivKey)
+	//fmt.Println(commPrivKey)
 	//fmt.Println(commPrivKey)
 	//TODO: fix this so that it uses args.dataDirectory
 	privKey, err := crypto.ExtractEDPrivKeyFromFile("walletMinerA.key" )
@@ -121,11 +124,9 @@ func Start(args *startArgs) error {
 
 	// Check if executor is root and if it's the first start
 	if p2p.IsBootstrap() && firstStart {
-		//TODO continue from here
-		 //miner.InitFirstStartED(validatorPubKeyED, privKey)
-		return miner.InitFirstStartED(validatorPubKeyED, privKey)
+		return miner.InitFirstStartED(validatorPubKeyED, commPrivKey)
 	} else {
-		return miner.InitED(validatorPubKeyED, privKey)
+		return miner.InitED(validatorPubKeyED, commPrivKey)
 	}
 
 	return nil

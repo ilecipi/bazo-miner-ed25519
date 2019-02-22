@@ -85,11 +85,12 @@ func ReturnTxPayloadForHeight(blockstash *BlockStash, height uint32) (txpayload 
 
 	for _,block := range blockstash.m {
 		if(block.Height == height){
-			payload := NewTransactionPayload(block.ShardId,int(block.Height),nil,nil,nil,nil)
+			payload := NewTransactionPayload(block.ShardId,int(block.Height),nil,nil,nil,nil, nil)
 			payload.StakeTxData = block.StakeTxData
 			payload.ConfigTxData = block.ConfigTxData
 			payload.FundsTxData = block.FundsTxData
 			payload.ContractTxData = block.ContractTxData
+			payload.IotTxData = block.IotTxData
 			payloadSlice = append(payloadSlice,payload)
 		}
 	}
