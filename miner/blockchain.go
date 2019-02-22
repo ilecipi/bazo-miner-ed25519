@@ -59,6 +59,7 @@ func InitFirstStartED(wallet ed25519.PublicKey, commitment ed25519.PrivateKey) e
 
 	logger = storage.InitLogger()
 	var rootCommitment [crypto.COMM_KEY_LENGTH_ED]byte
+	copy(rootCommitment[:], commitment[32:])
 
 	//rootAddress := crypto.GetAddressFromPubKey(wallet)
 	rootAddress := crypto.GetAddressFromPubKeyED(wallet)

@@ -230,7 +230,7 @@ func GetPubKeyFromAddress(address [64]byte) (pubKey *ecdsa.PublicKey) {
 }
 
 func GetPubKeyFromAddressED(address [32]byte)(pubKey ed25519.PublicKey){
-	pubKey = address[:32]
+	pubKey = address[:]
 	return pubKey
 }
 

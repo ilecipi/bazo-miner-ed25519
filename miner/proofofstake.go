@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"github.com/bazo-blockchain/bazo-miner/crypto"
 	"time"
 
@@ -28,19 +29,19 @@ func validateProofOfStake(diff uint8,
 
 	// allocate memory
 	// n * COMM_PROOF_LENGTH bytes (prevProofs) + COMM_PROOF_LENGTH bytes (commitmentProof)+ 4 bytes (height) + 8 bytes (count)
-	hashArgs = make([]byte, len(prevProofs)*crypto.COMM_PROOF_LENGTH+crypto.COMM_PROOF_LENGTH+4+8)
+	hashArgs = make([]byte, len(prevProofs)*crypto.COMM_PROOF_LENGTH_ED+crypto.COMM_PROOF_LENGTH_ED+4+8)
 
 	binary.BigEndian.PutUint32(heightBuf[:], height)
 	binary.BigEndian.PutUint64(timestampBuf[:], uint64(timestamp))
 
 	index := 0
 	for _, prevProof := range prevProofs {
-		copy(hashArgs[index:index + crypto.COMM_PROOF_LENGTH], prevProof[:])
-		index += crypto.COMM_PROOF_LENGTH
+		copy(hashArgs[index:index + crypto.COMM_PROOF_LENGTH_ED], prevProof[:])
+		index += crypto.COMM_PROOF_LENGTH_ED
 	}
 
-	copy(hashArgs[index:index + crypto.COMM_PROOF_LENGTH], commitmentProof[:]) // COMM_KEY_LENGTH bytes
-	index += crypto.COMM_PROOF_LENGTH
+	copy(hashArgs[index:index + crypto.COMM_PROOF_LENGTH_ED], commitmentProof[:]) // COMM_KEY_LENGTH bytes
+	index += crypto.COMM_PROOF_LENGTH_ED
 	copy(hashArgs[index:index + 4], heightBuf[:]) 		// 4 bytes
 	index += 4
 
@@ -64,6 +65,9 @@ func validateProofOfStake(diff uint8,
 		}
 	}
 	//Bits check
+	fmt.Println(diff%8)
+	fmt.Println(pos[byteNr], byteNr)
+	fmt.Println(1<<(8-diff%8))
 	if diff%8 != 0 && pos[byteNr] >= 1<<(8-diff%8) {
 		return false
 	}

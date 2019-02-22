@@ -122,7 +122,7 @@ func finalizeBlock(block *protocol.Block) error {
 	block.NrConfigTx = uint8(len(block.ConfigTxData))
 	block.NrStakeTx = uint16(len(block.StakeTxData))
 
-	copy(block.CommitmentProof[0:crypto.COMM_PROOF_LENGTH_ED], commitmentProof[:])
+	copy(block.CommitmentProof[:], commitmentProof[:])
 
 	return nil
 }
@@ -184,7 +184,7 @@ func finalizeEpochBlock(epochBlock *protocol.EpochBlock) error {
 	//Put pieces together to get the final hash.
 	epochBlock.Hash = sha3.Sum256(append(nonceBuf[:], partialHash[:]...))
 
-	copy(epochBlock.CommitmentProofED[0:crypto.COMM_PROOF_LENGTH_ED], commitmentProof[:])
+	copy(epochBlock.CommitmentProofED[:], commitmentProof[:])
 
 	return nil
 }
@@ -825,7 +825,8 @@ func preValidate(block *protocol.Block, initialSetup bool) (contractTxSlice []*p
 	//First, initialize an RSA Public Key instance with the modulus of the proposer of the block (acc)
 	//Second, check if the commitment proof of the proposed block can be verified with the public key
 	//Invalid if the commitment proof can not be verified with the public key of the proposer
-	commitmentPubKey := acc.CommitmentKey
+	commitmentPubKey := [32]byte{}
+	copy(commitmentPubKey[:], acc.CommitmentKey[:])
 
 	valid := crypto.VerifyMessageWithED(commitmentPubKey, fmt.Sprint(block.Height), block.CommitmentProof[:])
 	if !valid {
