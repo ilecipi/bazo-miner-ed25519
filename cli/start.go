@@ -110,11 +110,7 @@ func Start(args *startArgs) error {
 		return err
 	}
 
-	//commPrivKey, err := crypto.ExtractRSAKeyFromFile(args.dataDirectory + "/" + commitment)
-	commPrivKey, err := crypto.ExtractCommKeyFromFile(args.dataDirectory + "/" + commitment)
-	fmt.Println(commPrivKey)
-	//fmt.Println(commPrivKey)
-	//fmt.Println(commPrivKey)
+	commPrivKey, err := crypto.ExtractSeedKeyFromFile(args.dataDirectory + "/" + commitment)
 	//TODO: fix this so that it uses args.dataDirectory
 	privKey, err := crypto.ExtractEDPrivKeyFromFile("walletMinerA.key" )
 	fmt.Println(privKey)
