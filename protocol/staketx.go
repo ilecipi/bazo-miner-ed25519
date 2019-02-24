@@ -114,7 +114,7 @@ func (*StakeTx) Decode(encodedTx []byte) (tx *StakeTx) {
 	isStakingAsByte = encodedTx[9]
 	copy(tx.Account[:], encodedTx[10:74])
 	copy(tx.Sig[:], encodedTx[74:138])
-	copy(tx.CommitmentKey[:], encodedTx[138:138+crypto.COMM_KEY_LENGTH])
+	copy(tx.CommitmentKey[:], encodedTx[138:138+crypto.COMM_KEY_LENGTH_ED])
 
 	if isStakingAsByte == 0 {
 		tx.IsStaking = false

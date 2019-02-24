@@ -15,12 +15,7 @@ import (
 const (
 	// Note that this is the default public exponent set by Golang in rsa.go
 	// See https://github.com/golang/go/blob/6269dcdc24d74379d8a609ce886149811020b2cc/src/crypto/rsa/rsa.go#L226
-	COMM_PUBLIC_EXPONENT = 65537
-	COMM_KEY_BITS        = 2048
-	COMM_PROOF_LENGTH    = 256
-	COMM_KEY_LENGTH      = 256
-	COMM_NOF_PRIMES      = 2
-	COMM_PROOF_LENGTH_ED = 64
+	COMM_PROOF_LENGTH_ED 	= 64
 	COMM_KEY_LENGTH_ED      = 32
 
 )
