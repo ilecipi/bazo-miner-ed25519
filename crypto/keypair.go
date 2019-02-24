@@ -137,8 +137,8 @@ func readEDPublicKey(reader *bufio.Reader) (pubKey ed25519.PublicKey, err error)
 	if err != nil {
 		return pubKey, errors.New(fmt.Sprintf("Could not read key from file: %v", err))
 	}
-	pubKeyFile,err := GetPubKeyFromStringED(strings.Split(pub1, "\n")[0])
-	fmt.Println("<PubKey from File> ",pubKeyFile)
+	//pubKeyFile,err := GetPubKeyFromStringED(strings.Split(pub1, "\n")[0])
+	//fmt.Println("<PubKey from File> ",pubKeyFile)
 	return GetPubKeyFromStringED(strings.Split(pub1, "\n")[0])
 }
 
@@ -152,8 +152,8 @@ func readEDPrivateKey(reader *bufio.Reader) (privKey ed25519.PrivateKey, err err
 	if err != nil {
 		return privKey, errors.New(fmt.Sprintf("Could not read key from file: %v", err))
 	}
-	privKeyFile,err := GetPrivKeyFromStringED(pub,priv)
-	fmt.Println("<PrivKey from File> ",privKeyFile)
+	//privKeyFile,err := GetPrivKeyFromStringED(pub,priv)
+	//fmt.Println("<PrivKey from File> ",privKeyFile)
 	return GetPrivKeyFromStringED(strings.Split(pub, "\n")[0],strings.Split(priv, "\n")[0])
 }
 
@@ -295,8 +295,8 @@ func CreateECDSAKeyFile(filename string) (err error) {
 
 func CreateEDKeyFile(filename string) (err error) {
 	pubKey, privKey, err :=ed25519.GenerateKey(rand.Reader)
-	fmt.Println("PUBKEY: ",len(pubKey),pubKey)
-	fmt.Println("PRIVKEY:",len(privKey), privKey)
+	//fmt.Println("PUBKEY: ",len(pubKey),pubKey)
+	//fmt.Println("PRIVKEY:",len(privKey), privKey)
 	//Write the public key to the given textfile
 	if _, err = os.Stat(filename); !os.IsNotExist(err) {
 		return err

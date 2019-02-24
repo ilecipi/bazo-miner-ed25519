@@ -96,14 +96,14 @@ func Start(args *startArgs) error {
 
 	if(p2p.IsBootstrap()){
 		//validatorPubKey, err = crypto.ExtractECDSAPublicKeyFromFile("walletMinerA.key")
-		validatorPubKeyED, err = crypto.ExtractEDPublicKeyFromFile("walletMinerA.key")
+		validatorPubKeyED, err = crypto.ExtractEDPublicKeyFromFile("walletA.key")
 
 	} else {
 		//validatorPubKey, err = crypto.ExtractECDSAPublicKeyFromFile(args.dataDirectory + "/" + wallet)
 		validatorPubKeyED, err = crypto.ExtractEDPublicKeyFromFile(args.dataDirectory + "/" + wallet)
 
 	}
-	fmt.Println("VALIDATOR ED",validatorPubKeyED);
+	//fmt.Println("VALIDATOR ED",validatorPubKeyED);
 	//validatorPubKey, err := crypto.ExtractECDSAPublicKeyFromFile(args.dataDirectory + "/" + wallet)
 	//validatorPubKey, err := crypto.ExtractECDSAPublicKeyFromFile("walletMinerA.key")
 	if err != nil {
@@ -112,8 +112,8 @@ func Start(args *startArgs) error {
 
 	commPrivKey, err := crypto.ExtractSeedKeyFromFile(args.dataDirectory + "/" + commitment)
 	//TODO: fix this so that it uses args.dataDirectory
-	privKey, err := crypto.ExtractEDPrivKeyFromFile("walletMinerA.key" )
-	fmt.Println(privKey)
+	//privKey, err := crypto.ExtractEDPrivKeyFromFile("walletA.key" )
+	//fmt.Println(privKey)
 	if err != nil {
 		return err
 	}
