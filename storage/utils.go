@@ -28,6 +28,8 @@ func GetTxPubKeys(block *protocol.Block) (txPubKeys [][32]byte) {
 
 //Needed by miner and p2p package
 func GetAccount(hash [32]byte) (acc *protocol.Account, err error) {
+	fmt.Println(State)
+	fmt.Println(hash)
 	if acc = State[hash]; acc != nil {
 		return acc, nil
 	} else {

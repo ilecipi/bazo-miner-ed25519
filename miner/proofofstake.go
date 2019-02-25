@@ -8,8 +8,6 @@ import (
 	"github.com/bazo-blockchain/bazo-miner/crypto"
 	"time"
 
-	"github.com/bazo-blockchain/bazo-miner/protocol"
-	"github.com/bazo-blockchain/bazo-miner/storage"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -255,16 +253,4 @@ func proofOfStakeEpoch(diff uint8,
 	}
 
 	return timestamp, nil
-}
-
-func GetLatestProofs(n int, block *protocol.Block) (prevProofs [][crypto.COMM_PROOF_LENGTH_ED]byte) {
-	for block.Height > lastEpochBlock.Height + 1 && n > 0 {
-		block = storage.ReadClosedBlock(block.PrevHash)
-		/*if(block == nil){
-			return [][256]byte{[256]byte{}}
-		}*/
-		prevProofs = append(prevProofs, block.CommitmentProof)
-		n -= 1
-	}
-	return prevProofs
 }

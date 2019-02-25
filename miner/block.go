@@ -42,8 +42,8 @@ func finalizeBlock(block *protocol.Block) error {
 	//The slashingDict is updated when a new block is received and when a slashing proof is provided.
 	if len(slashingDict) != 0 {
 		//Get the first slashing proof.
-		for address, slashingProof := range slashingDict {
-			block.SlashedAddress = address
+		for hash, slashingProof := range slashingDict {
+			block.SlashedAddress = hash
 			block.ConflictingBlockHash1 = slashingProof.ConflictingBlockHash1
 			block.ConflictingBlockHash2 = slashingProof.ConflictingBlockHash2
 			//TODO @simibac Why do you break?
@@ -54,59 +54,26 @@ func finalizeBlock(block *protocol.Block) error {
 	//Merkle tree includes the hashes of all txs.
 	block.MerkleRoot = protocol.BuildMerkleTree(block).MerkleRoot()
 
-	/*In this step, wait until all TxPayloads from the other shards are received for the current block height.
-	Once received, update my local state and sync the global state with the other shards*/
-	//logger.Printf("Before synching TX Payloads for block Height: %d\n",block.Height)
-	//FileConnectionsLog.WriteString(fmt.Sprintf("Before synching TX Payloads for block Height: %d\n",block.Height))
-	//for{
-	//	payloadMap.Lock()
-	//	for _, payload := range TransactionPayloadReceivedMap {
-	//		if(payload.Height == int(block.Height) && payload.ShardID != ThisShardID){
-	//			TransactionPayloadIn = append(TransactionPayloadIn, payload)
-	//			logger.Printf("Writing into TransactionPayloadIn heiht: %d\n",payload.Height)
-	//			logger.Printf("Length of TransactionPayloadIn: %d\n",len(TransactionPayloadIn))
-	//			FileConnectionsLog.WriteString(fmt.Sprintf("Writing into TransactionPayloadIn heiht: %d\n",payload.Height))
-	//			FileConnectionsLog.WriteString(fmt.Sprintf("Length of TransactionPayloadIn: %d\n",len(TransactionPayloadIn)))
-	//			FileConnectionsLog.WriteString(fmt.Sprintf("TransactionPayloadIn Hash: %x\n",payload.HashPayload()))
-	//		}
-	//	}
-	//	payloadMap.Unlock()
-	//
-	//	if(len(TransactionPayloadIn) >= NumberOfShards - 1){
-	//		break
-	//	}
-	//}
-
-	//logger.Printf("After synching TX Payloads for block Height: %d\n",block.Height)
-	//FileConnectionsLog.WriteString(fmt.Sprintf("After synching TX Payloads for block Height: %d\n",block.Height))
-	//Add Merkle Patricia Tree hash in the block
-	//stateMPT, err := protocol.BuildMPT(storage.State)
-	//if err != nil {
-	//	return err
-	//}
-	//block.MerklePatriciaRoot = stateMPT.Hash()
-
-	validatorAcc, err := storage.ReadAccount(validatorAccAddress)
+	validatorAcc, err := storage.GetAccount(protocol.SerializeHashContent(validatorAccAddress))
 	if err != nil {
 		return err
 	}
 
-	copy(block.Beneficiary[:], validatorAcc.Address[:])
+	validatorAccHash := validatorAcc.Hash()
+	copy(block.Beneficiary[:], validatorAccHash[:])
 
 	// Cryptographic Sortition for PoS in Bazo
 	// The commitment proof stores a signed message of the Height that this block was created at.
-	commitmentProof:= crypto.SignMessageWithED(commPrivKey, fmt.Sprint(block.Height))
+	commitmentProof := crypto.SignMessageWithED(commPrivKey, fmt.Sprint(block.Height))
+
 
 	partialHash := block.HashBlock()
 	prevProofs := GetLatestProofs(activeParameters.num_included_prev_proofs, block)
-	logger.Printf("Before Block proofofstake for height: %d\n",block.Height)
-	FileConnectionsLog.WriteString(fmt.Sprintf("Before Block proofofstake for height: %d\n",block.Height))
+
 	nonce, err := proofOfStake(getDifficulty(), block.PrevHash, prevProofs, block.Height, validatorAcc.Balance, commitmentProof)
 	if err != nil {
 		return err
 	}
-	logger.Printf("After proofofstake for height: %d\n",block.Height)
-	FileConnectionsLog.WriteString(fmt.Sprintf("After proofofstake for height: %d\n",block.Height))
 
 	var nonceBuf [8]byte
 	binary.BigEndian.PutUint64(nonceBuf[:], uint64(nonce))
@@ -122,7 +89,7 @@ func finalizeBlock(block *protocol.Block) error {
 	block.NrConfigTx = uint8(len(block.ConfigTxData))
 	block.NrStakeTx = uint16(len(block.StakeTxData))
 
-	copy(block.CommitmentProof[:], commitmentProof[:])
+	copy(block.CommitmentProof[0:crypto.COMM_PROOF_LENGTH_ED], commitmentProof[:])
 
 	return nil
 }
@@ -988,4 +955,13 @@ func slashingCheck(slashedAddress [32]byte, conflictingBlockHash1, conflictingBl
 	delete(slashingDict, slashedAddress)
 
 	return true, nil
+}
+
+func GetLatestProofs(n int, block *protocol.Block) (prevProofs [][crypto.COMM_PROOF_LENGTH_ED]byte) {
+	for block.Height > 0 && n > 0 {
+		block = storage.ReadClosedBlock(block.PrevHash)
+		prevProofs = append(prevProofs, block.CommitmentProof)
+		n -= 1
+	}
+	return prevProofs
 }

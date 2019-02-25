@@ -110,7 +110,7 @@ func Start(args *startArgs, logger *log.Logger) error {
 
 
 	//validatorPubKey, err := crypto.ExtractECDSAPublicKeyFromFile(args.walletFile)
-	validatorPubKeyED, err := crypto.ExtractEDPublicKeyFromFile("walletA.key")
+	validatorPubKeyED, err := crypto.ExtractEDPublicKeyFromFile(args.walletFile)
 
 	if err != nil {
 		logger.Printf("%v\n", err)
