@@ -1,8 +1,6 @@
 package miner
 
 import (
-	"encoding/binary"
-	"fmt"
 	"github.com/bazo-blockchain/bazo-miner/protocol"
 	"github.com/bazo-blockchain/bazo-miner/storage"
 	"sort"
@@ -26,82 +24,20 @@ func prepareBlock(block *protocol.Block) {
 
 	sort.Sort(tmpCopy)
 
-	for i, tx := range opentxs {
-		/*When fetching and adding Txs from the MemPool, first check if it belongs to my shard. Only if so, then add tx to the block*/
-		txAssignedShard := assignTransactionToShard(tx)
+	for _, tx := range opentxs {
+		//Prevent block size to overflow.
+		if block.GetSize()+tx.Size() > activeParameters.Block_size {
+			break
+		}
 
-		if int(txAssignedShard) == ValidatorShardMap.ValMapping[validatorAccAddress]{
-			//logger.Printf("---- Transaction (%x) in shard: %d\n", tx.Hash(),txAssignedShardAbs)
-			FileConnectionsLog.WriteString(fmt.Sprintf("---- Transaction (%x) in shard: %d\n", tx.Hash(),txAssignedShard))
-			//Prevent block size to overflow.
-			//if block.GetSize()+tx.Size() > activeParameters.Block_size {
-			//	break
-			//}
-			//Prevent block size to overflow. +10 Because of the bloomFilter
-			if int(block.GetSize()+10)+(i*int(len(tx.Hash()))) > int(activeParameters.Block_size){
-				break
-			}
-
-			switch tx.(type) {
-			case *protocol.StakeTx:
-				//Add StakeTXs only when preparing the last block before the next epoch block
-				if (int(lastBlock.Height) == int(lastEpochBlock.Height) + int(activeParameters.epoch_length) - 1) {
-					err := addTx(block, tx)
-					if err != nil {
-						//If the tx is invalid, we remove it completely, prevents starvation in the mempool.
-						storage.DeleteOpenTx(tx)
-					}
-				}
-			case *protocol.ContractTx, *protocol.FundsTx, *protocol.ConfigTx:
-				err := addTx(block, tx)
-				if err != nil {
-					//If the tx is invalid, we remove it completely, prevents starvation in the mempool.
-					storage.DeleteOpenTx(tx)
-				}
-			}
-
+		err := addTx(block, tx)
+		if err != nil {
+			//If the tx is invalid, we remove it completely, prevents starvation in the mempool.
+			storage.DeleteOpenTx(tx)
 		}
 	}
 }
 
-func assignTransactionToShard(transaction protocol.Transaction) (shardNr int) {
-	//Convert Address/Issuer ([64]bytes) included in TX to bigInt for the modulo operation to determine the assigned shard ID.
-	switch transaction.(type) {
-		case *protocol.ContractTx:
-			var byteToConvert [32]byte
-			byteToConvert = transaction.(*protocol.ContractTx).Issuer
-			var calculatedInt int
-			calculatedInt = int(binary.BigEndian.Uint64(byteToConvert[:8]))
-			return int((Abs(int32(calculatedInt)) % int32(NumberOfShards)) + 1)
-		case *protocol.FundsTx:
-			var byteToConvert [32]byte
-			byteToConvert = transaction.(*protocol.FundsTx).From
-			var calculatedInt int
-			calculatedInt = int(binary.BigEndian.Uint64(byteToConvert[:8]))
-			return int((Abs(int32(calculatedInt)) % int32(NumberOfShards)) + 1)
-		case *protocol.ConfigTx:
-			var byteToConvert [64]byte
-			byteToConvert = transaction.(*protocol.ConfigTx).Sig
-			var calculatedInt int
-			calculatedInt = int(binary.BigEndian.Uint64(byteToConvert[:8]))
-			return int((Abs(int32(calculatedInt)) % int32(NumberOfShards)) + 1)
-		case *protocol.StakeTx:
-			var byteToConvert [32]byte
-			byteToConvert = transaction.(*protocol.StakeTx).Account
-			var calculatedInt int
-			calculatedInt = int(binary.BigEndian.Uint64(byteToConvert[:8]))
-			return int((Abs(int32(calculatedInt)) % int32(NumberOfShards)) + 1)
-		default:
-			return 1 // default shard Nr.
-		}
-}
-
-func Abs(x int32) int32 {
-	if x < 0 {
-		return -x
-	}
-	return x
-}
 
 //Implement the sort interface
 func (f openTxs) Len() int {

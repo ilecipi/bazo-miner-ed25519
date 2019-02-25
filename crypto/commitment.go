@@ -133,13 +133,9 @@ func nextLine(scanner *bufio.Scanner) string {
 
 func SignMessageWithED(privKey ed25519.PrivateKey, msg string) (sig []byte){
 	sig = ed25519.Sign(privKey, []byte(msg))
-	toPrint:= fmt.Sprintf("PrivKey %v \t"+ "- MSG %v \t"+"- Sign:%v \t", privKey[:], msg, sig[:4])
-	fmt.Println(toPrint)
 	return sig
 }
 
 func VerifyMessageWithED(pubKey [32]byte, msg string, sig []byte) (valid bool){
-	toPrint:= fmt.Sprintf("PubKey %v \t"+ "- MSG %v \t"+"- Sign:%v \t", pubKey[:], msg, sig[:4])
-	fmt.Println(toPrint)
 	return ed25519.Verify(GetPubKeyFromAddressED(pubKey),[]byte(msg), sig)
 }

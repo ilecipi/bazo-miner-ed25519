@@ -22,7 +22,7 @@ type AccTx struct {
 	ContractVariables []ByteArray
 }
 
-func ConstrAccTx(header byte, fee uint64, address [32]byte, rootPrivKey ed25519.PrivateKey, contract []byte, contractVariables []ByteArray) (tx *AccTx, newAccAddress ed25519.PrivateKey, err error) {
+func ConstrAccTx(header byte, fee uint64, address [32]byte, rootPrivKey ed25519.PrivateKey, contract []byte, contractVariables []ByteArray) (tx *AccTx, newAccAddress ed25519.PublicKey, err error) {
 	tx = new(AccTx)
 	tx.Header = header
 	tx.Fee = fee
@@ -34,11 +34,12 @@ func ConstrAccTx(header byte, fee uint64, address [32]byte, rootPrivKey ed25519.
 	} else {
 		var newAccAddressString string
 		//Check if string representation of account address is 128 long. Else there will be problems when doing REST calls.
-		for len(newAccAddressString) != 128 {
+		for len(newAccAddressString) != 32 {
+			fmt.Println("NEW ACCOUNT")
 			//newAccAddress, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-			newAccAddress, privKey, err := ed25519.GenerateKey(rand.Reader)
+			newAccAddress, _, err := ed25519.GenerateKey(rand.Reader)
 			if err != nil{
-				return nil, privKey, err
+				return nil, nil, err
 			}
 			copy(tx.PubKey[:], newAccAddress[:])
 
