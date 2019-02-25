@@ -89,7 +89,7 @@ func ReturnTxPayloadForHeight(blockstash *BlockStash, height uint32) (txpayload 
 			payload.StakeTxData = block.StakeTxData
 			payload.ConfigTxData = block.ConfigTxData
 			payload.FundsTxData = block.FundsTxData
-			payload.ContractTxData = block.ContractTxData
+			payload.AccTxData = block.AccTxData
 			payload.IotTxData = block.IotTxData
 			payloadSlice = append(payloadSlice,payload)
 		}

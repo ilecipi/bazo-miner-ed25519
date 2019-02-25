@@ -17,51 +17,6 @@ func incomingData() {
 	}
 }
 
-func incomingStateData(){
-	for{
-		stateTransition := <- p2p.StateTransitionIn
-		processStateData(stateTransition)
-	}
-}
-
-func incomingEpochData() {
-	for {
-		//receive Epoch Block
-		epochBlock := <-p2p.EpochBlockIn
-		processEpochBlock(epochBlock)
-	}
-}
-
-func incomingValShardData() {
-	for {
-		//check validator assignment
-		validatorMapping := <- p2p.ValidatorShardMapChanIn
-		processReceivedValidatorMapping(validatorMapping)
-	}
-}
-
-func incomingTxPayloadData() {
-	for {
-		//TX payload in
-		txPayload := <- p2p.TxPayloadIn
-		processPayload(txPayload)
-	}
-}
-
-func syncBlockHeight(){
-	for{
-		for _, bl := range blocksReceived{
-			if(blockBeingProcessed != nil){
-				if bl.Height == blockBeingProcessed.Height{
-					ReceivedBlocksAtHeightX = ReceivedBlocksAtHeightX + 1
-					logger.Printf("Increased ReceivedBlocksAtHeightX: %d",ReceivedBlocksAtHeightX)
-					removeBlock(blocksReceived, bl)
-				}
-			}
-		}
-	}
-}
-
 func processReceivedValidatorMapping(vm []byte) {
 	var valMapping *protocol.ValShardMapping
 	valMapping = valMapping.Decode(vm)
@@ -185,24 +140,6 @@ func broadcastBlock(block *protocol.Block) {
 	var blockCopy = *block
 	blockCopy.InitBloomFilter(append(storage.GetTxPubKeys(&blockCopy)))
 	p2p.BlockHeaderOut <- blockCopy.EncodeHeader()
-}
-
-func broadcastStateTransition(st *protocol.StateTransition) {
-	p2p.StateTransitionOut <- st.EncodeTransition()
-}
-
-/*Broadcast TX hashes to the network*/
-func broadcastTxPayload() {
-	p2p.TxPayloadOut <- TransactionPayloadOut.EncodePayload()
-}
-
-func broadcastEpochBlock(epochBlock *protocol.EpochBlock) {
-	p2p.EpochBlockOut <- epochBlock.Encode()
-}
-
-//p2p.ValidatorShardMapChanOut is a channel whose data get consumed by the p2p package
-func broadcastValidatorShardMapping(mapping *protocol.ValShardMapping) {
-	p2p.ValidatorShardMapChanOut <- mapping.Encode()
 }
 
 func broadcastVerifiedTxs(txs []*protocol.FundsTx) {

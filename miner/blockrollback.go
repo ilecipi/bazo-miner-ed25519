@@ -27,18 +27,18 @@ func rollback(b *protocol.Block) error {
 	return nil
 }
 
-func preValidateRollback(b *protocol.Block) (contractTxSlice []*protocol.ContractTx, fundsTxSlice []*protocol.FundsTx, configTxSlice []*protocol.ConfigTx, stakeTxSlice []*protocol.StakeTx, err error) {
+func preValidateRollback(b *protocol.Block) (accTxSlice []*protocol.AccTx, fundsTxSlice []*protocol.FundsTx, configTxSlice []*protocol.ConfigTx, stakeTxSlice []*protocol.StakeTx, err error) {
 	//Fetch all transactions from closed storage.
-	for _, hash := range b.ContractTxData {
-		var contractTx *protocol.ContractTx
+	for _, hash := range b.AccTxData {
+		var accTx *protocol.AccTx
 		tx := storage.ReadClosedTx(hash)
 		if tx == nil {
 			//This should never happen, because all validated transactions are in closed storage.
-			return nil, nil, nil, nil, errors.New("CRITICAL: Validated contractTx was not in the confirmed tx storage")
+			return nil, nil, nil, nil, errors.New("CRITICAL: Validated accTx was not in the confirmed tx storage")
 		} else {
-			contractTx = tx.(*protocol.ContractTx)
+			accTx = tx.(*protocol.AccTx)
 		}
-		contractTxSlice = append(contractTxSlice, contractTx)
+		accTxSlice = append(accTxSlice, accTx)
 	}
 
 	for _, hash := range b.FundsTxData {
@@ -74,21 +74,21 @@ func preValidateRollback(b *protocol.Block) (contractTxSlice []*protocol.Contrac
 		stakeTxSlice = append(stakeTxSlice, stakeTx)
 	}
 
-	return contractTxSlice, fundsTxSlice, configTxSlice, stakeTxSlice, nil
+	return accTxSlice, fundsTxSlice, configTxSlice, stakeTxSlice, nil
 }
 
 func validateStateRollback(data blockData) {
 	collectSlashRewardRollback(activeParameters.Slash_reward, data.block)
 	collectBlockRewardRollback(activeParameters.Block_reward, data.block.Beneficiary)
-	collectTxFeesRollback(data.contractTxSlice, data.fundsTxSlice, data.configTxSlice, data.stakeTxSlice, data.block.Beneficiary)
+	collectTxFeesRollback(data.accTxSlice, data.fundsTxSlice, data.configTxSlice, data.stakeTxSlice, data.block.Beneficiary)
 	stakeStateChangeRollback(data.stakeTxSlice)
 	fundsStateChangeRollback(data.fundsTxSlice)
-	accStateChangeRollback(data.contractTxSlice)
+	accStateChangeRollback(data.accTxSlice)
 }
 
 func postValidateRollback(data blockData) {
 	//Put all validated txs into invalidated state.
-	for _, tx := range data.contractTxSlice {
+	for _, tx := range data.accTxSlice {
 		storage.WriteOpenTx(tx)
 		storage.DeleteClosedTx(tx)
 	}

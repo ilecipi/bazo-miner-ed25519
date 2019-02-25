@@ -51,8 +51,8 @@ func BuildMerkleTree(b *Block) *MerkleTree {
 			txHashes = append(txHashes, txHash)
 		}
 	}
-	if b.ContractTxData != nil {
-		for _, txHash := range b.ContractTxData {
+	if b.AccTxData != nil {
+		for _, txHash := range b.AccTxData {
 			txHashes = append(txHashes, txHash)
 		}
 	}

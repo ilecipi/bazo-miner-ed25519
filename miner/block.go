@@ -17,7 +17,7 @@ import (
 
 //Datastructure to fetch the payload of all transactions, needed for state validation.
 type blockData struct {
-	contractTxSlice    []*protocol.ContractTx
+	accTxSlice    []*protocol.AccTx
 	fundsTxSlice  []*protocol.FundsTx
 	configTxSlice []*protocol.ConfigTx
 	stakeTxSlice  []*protocol.StakeTx
@@ -117,74 +117,12 @@ func finalizeBlock(block *protocol.Block) error {
 	block.Hash = sha3.Sum256(append(nonceBuf[:], partialHash[:]...))
 
 	//This doesn't need to be hashed, because we already have the merkle tree taking care of consistency.
-	block.NrContractTx = uint16(len(block.ContractTxData))
+	block.NrAccTx = uint16(len(block.AccTxData))
 	block.NrFundsTx = uint16(len(block.FundsTxData))
 	block.NrConfigTx = uint8(len(block.ConfigTxData))
 	block.NrStakeTx = uint16(len(block.StakeTxData))
 
 	copy(block.CommitmentProof[:], commitmentProof[:])
-
-	return nil
-}
-
-func finalizeEpochBlock(epochBlock *protocol.EpochBlock) error {
-
-	//Add Merkle Patricia Tree hash in the block
-	//stateMPT, err := protocol.BuildMPT(storage.State)
-	//if err != nil {
-	//	return err
-	//}
-	//epochBlock.MerklePatriciaRoot = stateMPT.Hash()
-
-	validatorAcc, err := storage.ReadAccount(validatorAccAddress)
-	if err != nil {
-		return err
-	}
-
-
-	// Cryptographic Sortition for PoS in Bazo
-	// The commitment proof stores a signed message of the Height that this block was created at.
-	commitmentProof := crypto.SignMessageWithED(commPrivKey, fmt.Sprint(epochBlock.Height))
-	if err != nil {
-		return err
-	}
-
-	partialHash := epochBlock.HashEpochBlock()
-
-	/*Determine new number of shards needed based on current state*/
-	NumberOfShards = DetNumberOfShards()
-
-	//generate new validator mapping and attach mappping to the epoch block
-	valMapping := protocol.NewMapping()
-	valMapping.ValMapping = AssignValidatorsToShards()
-	valMapping.EpochHeight = int(epochBlock.Height)
-
-	epochBlock.ValMapping = valMapping
-	ValidatorShardMap = epochBlock.ValMapping
-	epochBlock.NofShards = DetNumberOfShards()
-
-	ThisShardID = ValidatorShardMap.ValMapping[validatorAccAddress]
-
-	epochBlock.State = storage.State
-	logger.Printf("Before Epoch Block proofofstake for height: %d\n",epochBlock.Height)
-	FileConnectionsLog.WriteString(fmt.Sprintf("Before Epoch Block proofofstake for height: %d\n",epochBlock.Height))
-
-	nonce, err := proofOfStakeEpoch(getDifficulty(), lastEpochBlock.Hash, epochBlock.Height, validatorAcc.Balance, commitmentProof)
-	if err != nil {
-		return err
-	}
-
-	logger.Printf("After Epoch Block proofofstake for height: %d\n",epochBlock.Height)
-	FileConnectionsLog.WriteString(fmt.Sprintf("After Epoch Block proofofstake for height: %d\n",epochBlock.Height))
-
-	var nonceBuf [8]byte
-	binary.BigEndian.PutUint64(nonceBuf[:], uint64(nonce))
-	epochBlock.Timestamp = nonce
-
-	//Put pieces together to get the final hash.
-	epochBlock.Hash = sha3.Sum256(append(nonceBuf[:], partialHash[:]...))
-
-	copy(epochBlock.CommitmentProofED[:], commitmentProof[:])
 
 	return nil
 }
@@ -219,8 +157,8 @@ func addTx(b *protocol.Block, tx protocol.Transaction) error {
 	}
 
 	switch tx.(type) {
-	case *protocol.ContractTx:
-		err := addContractTx(b, tx.(*protocol.ContractTx))
+	case *protocol.AccTx:
+		err := addAccTx(b, tx.(*protocol.AccTx))
 		if err != nil {
 			logger.Printf("Adding contractTx tx failed (%v): %v\n", err, tx.(*protocol.ContractTx))
 			FileConnectionsLog.WriteString(fmt.Sprintf("Adding contractTx tx failed (%v): %v\n", err, tx.(*protocol.ContractTx)))
@@ -254,19 +192,19 @@ func addTx(b *protocol.Block, tx protocol.Transaction) error {
 	return nil
 }
 
-func addContractTx(b *protocol.Block, tx *protocol.ContractTx) error {
-	//According to the contractTx specification, we only accept new accounts except if the removal bit is
+func addAccTx(b *protocol.Block, tx *protocol.AccTx) error {
+	accHash := sha3.Sum256(tx.PubKey[:])
+	//According to the accTx specification, we only accept new accounts except if the removal bit is
 	//set in the header (2nd bit).
 	if tx.Header&0x02 != 0x02 {
-		if _, exists := storage.State[tx.PubKey]; exists {
+		if _, exists := storage.State[accHash]; exists {
 			return errors.New("Account already exists.")
 		}
 	}
 
 	//Add the tx hash to the block header and write it to open storage (non-validated transactions).
-	b.ContractTxData = append(b.ContractTxData, tx.Hash())
-	logger.Printf("Added tx to the ContractTxData slice: %v\n", *tx)
-	FileConnectionsLog.WriteString(fmt.Sprintf("Added tx to the ContractTxData slice: %v\n", *tx))
+	b.AccTxData = append(b.AccTxData, tx.Hash())
+	logger.Printf("Added tx to the AccTxData slice: %v", *tx)
 	return nil
 }
 
@@ -306,38 +244,6 @@ func addFundsTx(b *protocol.Block, tx *protocol.FundsTx) error {
 			return errors.New("Not enough funds to complete the transaction!")
 		}
 	}
-
-	///*Verify included MPT Proof with the MPT root hash of the last block*/
-	////Get MPT root hash of last block
-	//MPTRootLastBlock := storage.ReadLastClosedBlock().MerklePatriciaRoot
-
-	////Get Proof DB of MPT proof in the transaction
-	//
-	//proofDB := protocol.MPTMapToMemDB(tx.MPT_Proof.Proofs)
-	//
-	//val, _, err := trie.VerifyProof(MPTRootLastBlock, tx.From[:], proofDB)
-	//
-	//if err != nil {
-	//	err := fmt.Sprintf("prover: failed to verify proof for key: %x", tx.From)
-	//	return errors.New(err)
-	//}
-	//
-	//if val == nil {
-	//	err := fmt.Sprintf("prover: MPT does not contain the key: %x", tx.From)
-	//	return errors.New(err)
-	//}
-	//
-	//valInt, err := strconv.Atoi(string(val))
-	//if err != nil {
-	//	err := fmt.Sprintf("Parsing value failed: %v\n", err)
-	//	return errors.New(err)
-	//}
-	//
-	//if !storage.IsRootKey(tx.From) {
-	//	if (tx.Amount + tx.Fee) > uint64(valInt) {
-	//		return errors.New("Not enough funds to complete the transaction!")
-	//	}
-	//}
 
 	//Transaction count need to match the state, preventing replay attacks.
 	if b.StateCopy[tx.From].TxCnt != tx.TxCnt {
@@ -429,21 +335,20 @@ func addStakeTx(b *protocol.Block, tx *protocol.StakeTx) error {
 	return nil
 }
 
-//We use slices (not maps) because order is now important.
-func fetchContractTxData(block *protocol.Block, contractTxSlice []*protocol.ContractTx, initialSetup bool, errChan chan error) {
-	for cnt, txHash := range block.ContractTxData {
+func fetchAccTxData(block *protocol.Block, accTxSlice []*protocol.AccTx, initialSetup bool, errChan chan error) {
+	for cnt, txHash := range block.AccTxData {
 		var tx protocol.Transaction
-		var contractTx *protocol.ContractTx
+		var accTx *protocol.AccTx
 
 		closedTx := storage.ReadClosedTx(txHash)
 		if closedTx != nil {
 			if initialSetup {
-				contractTx = closedTx.(*protocol.ContractTx)
-				contractTxSlice[cnt] = contractTx
+				accTx = closedTx.(*protocol.AccTx)
+				accTxSlice[cnt] = accTx
 				continue
 			} else {
 				//Reject blocks that have txs which have already been validated.
-				errChan <- errors.New("Block validation had contractTx that was already in a previous block.")
+				errChan <- errors.New("Block validation had accTx that was already in a previous block.")
 				return
 			}
 		}
@@ -452,33 +357,34 @@ func fetchContractTxData(block *protocol.Block, contractTxSlice []*protocol.Cont
 		//Tx is either in open storage or needs to be fetched from the network.
 		tx = storage.ReadOpenTx(txHash)
 		if tx != nil {
-			contractTx = tx.(*protocol.ContractTx)
+			accTx = tx.(*protocol.AccTx)
 		} else {
-			err := p2p.TxReq(txHash, p2p.CONTRACTTX_REQ)
+			err := p2p.TxReq(txHash, p2p.ACCTX_REQ)
 			if err != nil {
-				errChan <- errors.New(fmt.Sprintf("ContractTx could not be read: %v", err))
+				errChan <- errors.New(fmt.Sprintf("AccTx could not be read: %v", err))
 				return
 			}
 
 			//Blocking Wait
 			select {
-			case contractTx = <-p2p.ContractTxChan:
+			case accTx = <-p2p.AccTxChan:
 				//Limit the waiting time for TXFETCH_TIMEOUT seconds.
 			case <-time.After(TXFETCH_TIMEOUT * time.Second):
-				errChan <- errors.New("ContractTx fetch timed out.")
+				errChan <- errors.New("AccTx fetch timed out.")
 			}
 			//This check is important. A malicious miner might have sent us a tx whose hash is a different one
 			//from what we requested.
-			if contractTx.Hash() != txHash {
+			if accTx.Hash() != txHash {
 				errChan <- errors.New("Received txHash did not correspond to our request.")
 			}
 		}
 
-		contractTxSlice[cnt] = contractTx
+		accTxSlice[cnt] = accTx
 	}
 
 	errChan <- nil
 }
+
 
 func fetchFundsTxData(block *protocol.Block, fundsTxSlice []*protocol.FundsTx, initialSetup bool, errChan chan error) {
 	for cnt, txHash := range block.FundsTxData {
@@ -657,7 +563,7 @@ func validate(b *protocol.Block, initialSetup bool) error {
 
 	for _, block := range blocksToValidate {
 		//Fetching payload data from the txs (if necessary, ask other miners).
-		contractTxs, fundsTxs, configTxs, stakeTxs, err := preValidate(block, initialSetup)
+		accTxs, fundsTxs, configTxs, stakeTxs, err := preValidate(block, initialSetup)
 
 		//Check if the validator that added the block has previously voted on different competing chains (find slashing proof).
 		//The proof will be stored in the global slashing dictionary.
@@ -669,7 +575,7 @@ func validate(b *protocol.Block, initialSetup bool) error {
 			return err
 		}
 
-		blockDataMap[block.Hash] = blockData{contractTxs, fundsTxs, configTxs, stakeTxs, block}
+		blockDataMap[block.Hash] = blockData{accTxs, fundsTxs, configTxs, stakeTxs, block}
 		//Save state before and after validateState() in order to generate state transition which is sent to the other shards
 		var previousStateCopy = CopyState(storage.State)
 
@@ -748,7 +654,7 @@ func validateAfterEpoch(b *protocol.Block, initialSetup bool) error {
 }
 
 //Doesn't involve any state changes.
-func preValidate(block *protocol.Block, initialSetup bool) (contractTxSlice []*protocol.ContractTx, fundsTxSlice []*protocol.FundsTx, configTxSlice []*protocol.ConfigTx, stakeTxSlice []*protocol.StakeTx, err error) {
+func preValidate(block *protocol.Block, initialSetup bool)  (accTxSlice []*protocol.AccTx, fundsTxSlice []*protocol.FundsTx, configTxSlice []*protocol.ConfigTx, stakeTxSlice []*protocol.StakeTx, err error) {
 	//This dynamic check is only done if we're up-to-date with syncing, otherwise timestamp is not checked.
 	//Other miners (which are up-to-date) made sure that this is correct.
 	if !initialSetup && uptodate {
@@ -764,7 +670,7 @@ func preValidate(block *protocol.Block, initialSetup bool) (contractTxSlice []*p
 
 	//Duplicates are not allowed, use tx hash hashmap to easily check for duplicates.
 	duplicates := make(map[[32]byte]bool)
-	for _, txHash := range block.ContractTxData {
+	for _, txHash := range block.AccTxData {
 		if _, exists := duplicates[txHash]; exists {
 			return nil, nil, nil, nil, errors.New("Duplicate Account Transaction Hash detected.")
 		}
@@ -793,12 +699,12 @@ func preValidate(block *protocol.Block, initialSetup bool) (contractTxSlice []*p
 	errChan := make(chan error, 4)
 
 	//We need to allocate slice space for the underlying array when we pass them as reference.
-	contractTxSlice = make([]*protocol.ContractTx, block.NrContractTx)
+	accTxSlice = make([]*protocol.AccTx, block.NrAccTx)
 	fundsTxSlice = make([]*protocol.FundsTx, block.NrFundsTx)
 	configTxSlice = make([]*protocol.ConfigTx, block.NrConfigTx)
 	stakeTxSlice = make([]*protocol.StakeTx, block.NrStakeTx)
 
-	go fetchContractTxData(block, contractTxSlice, initialSetup, errChan)
+	go fetchAccTxData(block, accTxSlice, initialSetup, errChan)
 	go fetchFundsTxData(block, fundsTxSlice, initialSetup, errChan)
 	go fetchConfigTxData(block, configTxSlice, initialSetup, errChan)
 	go fetchStakeTxData(block, stakeTxSlice, initialSetup, errChan)
@@ -864,161 +770,89 @@ func preValidate(block *protocol.Block, initialSetup bool) (contractTxSlice []*p
 		return nil, nil, nil, nil, errors.New("Merkle Root is incorrect.")
 	}
 
-	return contractTxSlice, fundsTxSlice, configTxSlice, stakeTxSlice, err
+	return accTxSlice, fundsTxSlice, configTxSlice, stakeTxSlice, err
 }
 
 //Dynamic state check.
-//The sequence of validation matters
-func validateState(data blockData) (err error) {
-	accStateChange(data.contractTxSlice)
+func validateState(data blockData) error {
+	//The sequence of validation matters. If we start with accs, then fund/stake transactions can be done in the same block
+	//even though the accounts did not exist before the block validation.
+	if err := accStateChange(data.accTxSlice); err != nil {
+		return err
+	}
 
-	err = fundsStateChange(data.fundsTxSlice)
-	if err != nil {
-		accStateChangeRollback(data.contractTxSlice)
+	if err := fundsStateChange(data.fundsTxSlice); err != nil {
+		accStateChangeRollback(data.accTxSlice)
 		return err
 	}
 
 	if err := stakeStateChange(data.stakeTxSlice, data.block.Height); err != nil {
 		fundsStateChangeRollback(data.fundsTxSlice)
-		accStateChangeRollback(data.contractTxSlice)
+		accStateChangeRollback(data.accTxSlice)
 		return err
 	}
 
-	if err := collectTxFees(data.contractTxSlice, data.fundsTxSlice, data.configTxSlice, data.stakeTxSlice, data.block.Beneficiary); err != nil {
+	if err := collectTxFees(data.accTxSlice, data.fundsTxSlice, data.configTxSlice, data.stakeTxSlice, data.block.Beneficiary); err != nil {
 		stakeStateChangeRollback(data.stakeTxSlice)
 		fundsStateChangeRollback(data.fundsTxSlice)
-		accStateChangeRollback(data.contractTxSlice)
+		accStateChangeRollback(data.accTxSlice)
 		return err
 	}
 
 	if err := collectBlockReward(activeParameters.Block_reward, data.block.Beneficiary); err != nil {
-		collectTxFeesRollback(data.contractTxSlice, data.fundsTxSlice, data.configTxSlice, data.stakeTxSlice, data.block.Beneficiary)
+		collectTxFeesRollback(data.accTxSlice, data.fundsTxSlice, data.configTxSlice, data.stakeTxSlice, data.block.Beneficiary)
 		stakeStateChangeRollback(data.stakeTxSlice)
 		fundsStateChangeRollback(data.fundsTxSlice)
-		accStateChangeRollback(data.contractTxSlice)
+		accStateChangeRollback(data.accTxSlice)
 		return err
 	}
 
 	if err := collectSlashReward(activeParameters.Slash_reward, data.block); err != nil {
 		collectBlockRewardRollback(activeParameters.Block_reward, data.block.Beneficiary)
-		collectTxFeesRollback(data.contractTxSlice, data.fundsTxSlice, data.configTxSlice, data.stakeTxSlice, data.block.Beneficiary)
+		collectTxFeesRollback(data.accTxSlice, data.fundsTxSlice, data.configTxSlice, data.stakeTxSlice, data.block.Beneficiary)
 		stakeStateChangeRollback(data.stakeTxSlice)
 		fundsStateChangeRollback(data.fundsTxSlice)
-		accStateChangeRollback(data.contractTxSlice)
+		accStateChangeRollback(data.accTxSlice)
 		return err
 	}
 
 	if err := updateStakingHeight(data.block); err != nil {
 		collectSlashRewardRollback(activeParameters.Slash_reward, data.block)
 		collectBlockRewardRollback(activeParameters.Block_reward, data.block.Beneficiary)
-		collectTxFeesRollback(data.contractTxSlice, data.fundsTxSlice, data.configTxSlice, data.stakeTxSlice, data.block.Beneficiary)
+		collectTxFeesRollback(data.accTxSlice, data.fundsTxSlice, data.configTxSlice, data.stakeTxSlice, data.block.Beneficiary)
 		stakeStateChangeRollback(data.stakeTxSlice)
 		fundsStateChangeRollback(data.fundsTxSlice)
-		accStateChangeRollback(data.contractTxSlice)
+		accStateChangeRollback(data.accTxSlice)
 		return err
 	}
 
 	return nil
 }
-/*func updateGlobalState(txPayloads []*protocol.TransactionPayload) (err error) {
 
-	for _,txPayload := range txPayloads{
-		var contractTxSlice []*protocol.ContractTx
-		var fundsTxSlice []*protocol.FundsTx
-		var configTxSlice []*protocol.ConfigTx
-		var stakeTxSlice []*protocol.StakeTx
+func fundsStateChangeRollback(txSlice []*protocol.FundsTx) {
+	//Rollback in reverse order than original state change
+	for cnt := len(txSlice) - 1; cnt >= 0; cnt-- {
+		tx := txSlice[cnt]
 
-		for _,contractTxHash := range txPayload.ContractTxData{
-			contractTxSlice = append(contractTxSlice,storage.ReadOpenTx(contractTxHash).(*protocol.ContractTx))
-		}
+		accSender, _ := storage.GetAccount(tx.From)
+		accReceiver, _ := storage.GetAccount(tx.To)
 
-		for _, fundsTxHash := range txPayload.FundsTxData{
-			fundsTxSlice = append(fundsTxSlice,storage.ReadOpenTx(fundsTxHash).(*protocol.FundsTx))
-		}
+		accSender.TxCnt -= 1
+		accSender.Balance += tx.Amount
+		accReceiver.Balance -= tx.Amount
 
-		for _, configTxHash := range txPayload.ConfigTxData{
-			configTxSlice = append(configTxSlice,storage.ReadOpenTx(configTxHash).(*protocol.ConfigTx))
-		}
-
-		for _, stakeTxHash := range txPayload.StakeTxData{
-			stakeTxSlice = append(stakeTxSlice,storage.ReadOpenTx(stakeTxHash).(*protocol.StakeTx))
-		}
-
-		accStateChange(contractTxSlice)
-
-		err = fundsStateChange(fundsTxSlice)
-		if err != nil {
-			accStateChangeRollback(contractTxSlice)
-			return err
-		}
-
-		if(lastBlock == nil){
-			if err := stakeStateChange(stakeTxSlice, lastEpochBlock.Height + 1); err != nil {
-				fundsStateChangeRollback(fundsTxSlice)
-				accStateChangeRollback(contractTxSlice)
-				return err
-			}
-		} else {
-
-			if err := stakeStateChange(stakeTxSlice, lastBlock.Height + 1); err != nil {
-				fundsStateChangeRollback(fundsTxSlice)
-				accStateChangeRollback(contractTxSlice)
-				return err
-			}
+		//If new coins were issued, revert
+		if rootAcc, _ := storage.GetRootAccount(tx.From); rootAcc != nil {
+			rootAcc.Balance -= tx.Amount
+			rootAcc.Balance -= tx.Fee
 		}
 	}
-
-	return nil
-}*/
-
-/*This function received validated and process transactions from other shards and updates the local global state
-No transaction validation or storage done at this step*/
-func updateGlobalState(txPayloads []*protocol.TransactionPayload) (err error) {
-
-	for _,txPayload := range txPayloads{
-		var contractTxSlice []*protocol.ContractTx
-		var fundsTxSlice []*protocol.FundsTx
-		var configTxSlice []*protocol.ConfigTx
-		var stakeTxSlice []*protocol.StakeTx
-
-		for _,contractTxHash := range txPayload.ContractTxData{
-			contractTxSlice = append(contractTxSlice,storage.ReadOpenTx(contractTxHash).(*protocol.ContractTx))
-		}
-
-		for _, fundsTxHash := range txPayload.FundsTxData{
-			fundsTxSlice = append(fundsTxSlice,storage.ReadOpenTx(fundsTxHash).(*protocol.FundsTx))
-		}
-
-		for _, configTxHash := range txPayload.ConfigTxData{
-			configTxSlice = append(configTxSlice,storage.ReadOpenTx(configTxHash).(*protocol.ConfigTx))
-		}
-
-		for _, stakeTxHash := range txPayload.StakeTxData{
-			stakeTxSlice = append(stakeTxSlice,storage.ReadOpenTx(stakeTxHash).(*protocol.StakeTx))
-		}
-
-		//Add new accounts if necessary
-		accStateChange(contractTxSlice)
-
-		applyFundsChange(fundsTxSlice)
-
-		applyConfigChange(configTxSlice)
-
-		if(lastBlock == nil){
-			applyStakeChange(stakeTxSlice, lastEpochBlock.Height + 1)
-		} else {
-			applyStakeChange(stakeTxSlice, lastBlock.Height + 1)
-		}
-
-
-	}
-
-	return nil
 }
+
 
 func postValidate(data blockData, initialSetup bool) {
 	//The new system parameters get active if the block was successfully validated
-	//This is done after state validation (in contrast to contractTx/fundsTx).
+	//This is done after state validation (in contrast to accTx/fundsTx).
 	//Conversely, if blocks are rolled back, the system parameters are changed first.
 	configStateChange(data.configTxSlice, data.block.Hash)
 	//Collects meta information about the block (and handled difficulty adaption).
@@ -1026,7 +860,7 @@ func postValidate(data blockData, initialSetup bool) {
 
 	if !initialSetup {
 		//Write all open transactions to closed/validated storage.
-		for _, tx := range data.contractTxSlice {
+		for _, tx := range data.accTxSlice {
 			storage.WriteClosedTx(tx)
 			storage.DeleteOpenTx(tx)
 		}

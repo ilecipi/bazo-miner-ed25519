@@ -15,14 +15,6 @@ func processIncomingMsg(p *peer, header *Header, payload []byte) {
 		processTxBrdcst(p, payload, STAKETX_BRDCST)
 	case BLOCK_BRDCST:
 		forwardBlockToMiner(p, payload)
-	case TX_PAYLOAD_BRDCST:
-		forwardTxPayloadToMiner(p, payload)
-	case EPOCH_BLOCK_BRDCST:
-		forwardEpochBlockToMinerIn(p, payload)
-	case STATE_TRANSITION_BRDCST:
-		forwardStateTransitionToMiner(p,payload)
-	case VALIDATOR_SHARD_BRDCST:
-		forwardAssignmentToMiner(p, payload)
 	case TIME_BRDCST:
 		processTimeRes(p, payload)
 
@@ -32,8 +24,8 @@ func processIncomingMsg(p *peer, header *Header, payload []byte) {
 		//REQUESTS
 	case FUNDSTX_REQ:
 		txRes(p, payload, FUNDSTX_REQ)
-	case CONTRACTTX_REQ:
-		txRes(p, payload, CONTRACTTX_REQ)
+	case ACCTX_REQ:
+		txRes(p, payload, ACCTX_REQ)
 	case CONFIGTX_REQ:
 		txRes(p, payload, CONFIGTX_REQ)
 	case STAKETX_REQ:
@@ -66,29 +58,17 @@ func processIncomingMsg(p *peer, header *Header, payload []byte) {
 		EpochBlockRes(p,payload)
 	case LAST_EPOCH_BLOCK_REQ:
 		LastEpochBlockRes(p,payload)
-
-		//RESPONSES
-	case VALIDATOR_SHARD_RES:
-		processValMappingRes(p, payload)
 	case NEIGHBOR_RES:
 		processNeighborRes(p, payload)
 	case BLOCK_RES:
 		forwardBlockReqToMiner(p, payload)
 	case FUNDSTX_RES:
 		forwardTxReqToMiner(p, payload, FUNDSTX_RES)
-	case CONTRACTTX_RES:
-		forwardTxReqToMiner(p, payload, CONTRACTTX_RES)
+	case ACCTX_RES:
+		forwardTxReqToMiner(p, payload, ACCTX_RES)
 	case CONFIGTX_RES:
 		forwardTxReqToMiner(p, payload, CONFIGTX_RES)
 	case STAKETX_RES:
 		forwardTxReqToMiner(p, payload, STAKETX_RES)
-	case GENESIS_RES:
-		forwardGenesisReqToMiner(p, payload)
-	case FIRST_EPOCH_BLOCK_RES:
-		forwardFirstEpochBlockToMiner(p,payload)
-	case EPOCH_BLOCK_RES:
-		forwardEpochBlockToMiner(p,payload)
-	case LAST_EPOCH_BLOCK_RES:
-		forwardLastEpochBlockToMiner(p,payload)
 	}
 }

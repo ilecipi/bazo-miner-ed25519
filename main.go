@@ -8,10 +8,8 @@ import (
 )
 
 func main() {
+	logger := storage.InitLogger()
 
-	//defer profile.Start().Stop()
-
-	// test commit for new sharding branch
 	app := cli2.NewApp()
 
 	app.Name = "bazo-miner"
@@ -19,14 +17,13 @@ func main() {
 	app.Version = "1.0.0"
 	app.EnableBashCompletion = true
 	app.Commands = []cli2.Command {
-		cli.GetStartCommand(),
+		cli.GetStartCommand(logger),
 		cli.GetGenerateWalletCommand(),
 		cli.GetGenerateCommitmentCommand(),
 	}
 
 	err := app.Run(os.Args)
 	if err != nil {
-		logger := storage.InitLogger()
 		logger.Fatal(err)
 	}
 }

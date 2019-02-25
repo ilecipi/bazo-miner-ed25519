@@ -6,28 +6,25 @@ import (
 	"github.com/bazo-blockchain/bazo-miner/storage"
 )
 
-func accStateChangeRollback(txSlice []*protocol.ContractTx) {
-	for _, contractTx := range txSlice {
-		storage.DeleteAccount(contractTx.PubKey)
-	}
-}
 
-func fundsStateChangeRollback(txSlice []*protocol.FundsTx) {
-	//Rollback in reverse order than original state change
-	for cnt := len(txSlice) - 1; cnt >= 0; cnt-- {
-		tx := txSlice[cnt]
+func accStateChangeRollback(txSlice []*protocol.AccTx) {
+	for _, tx := range txSlice {
+		if tx.Header == 0 || tx.Header == 1 || tx.Header == 2 {
+			accHash := protocol.SerializeHashContent(tx.PubKey)
 
-		accSender, _ := storage.ReadAccount(tx.From)
-		accReceiver, _ := storage.ReadAccount(tx.To)
+			acc, err := storage.GetAccount(accHash)
+			if err != nil {
+				logger.Fatal("CRITICAL: An account that should have been saved does not exist.")
+			}
 
-		accSender.TxCnt -= 1
-		accSender.Balance += tx.Amount
-		accReceiver.Balance -= tx.Amount
+			delete(storage.State, accHash)
 
-		//If new coins were issued, revert
-		if rootAcc, _ := storage.ReadRootAccount(tx.From); rootAcc != nil {
-			rootAcc.Balance -= tx.Amount
-			rootAcc.Balance -= tx.Fee
+			switch tx.Header {
+			case 1:
+				delete(storage.RootKeys, accHash)
+			case 2:
+				storage.RootKeys[accHash] = acc
+			}
 		}
 	}
 }
@@ -62,11 +59,11 @@ func stakeStateChangeRollback(txSlice []*protocol.StakeTx) {
 	}
 }
 
-func collectTxFeesRollback(contractTx []*protocol.ContractTx, fundsTx []*protocol.FundsTx, configTx []*protocol.ConfigTx, stakeTx []*protocol.StakeTx, minerAddress [32]byte) {
-	minerAcc, _ := storage.ReadAccount(minerAddress)
+func collectTxFeesRollback(accTx []*protocol.AccTx, fundsTx []*protocol.FundsTx, configTx []*protocol.ConfigTx, stakeTx []*protocol.StakeTx, minerHash [32]byte) {
+	minerAcc, _ := storage.GetAccount(minerHash)
 
 	//Subtract fees from sender (check if that is allowed has already been done in the block validation)
-	for _, tx := range contractTx {
+	for _, tx := range accTx {
 		//Money was created out of thin air, no need to write back
 		minerAcc.Balance -= tx.Fee
 	}
@@ -74,7 +71,7 @@ func collectTxFeesRollback(contractTx []*protocol.ContractTx, fundsTx []*protoco
 	for _, tx := range fundsTx {
 		minerAcc.Balance -= tx.Fee
 
-		senderAcc, _ := storage.ReadAccount(tx.From)
+		senderAcc, _ := storage.GetAccount(tx.From)
 		senderAcc.Balance += tx.Fee
 	}
 
@@ -86,7 +83,7 @@ func collectTxFeesRollback(contractTx []*protocol.ContractTx, fundsTx []*protoco
 	for _, tx := range stakeTx {
 		minerAcc.Balance -= tx.Fee
 
-		senderAcc, _ := storage.ReadAccount(tx.Account)
+		senderAcc, _ := storage.GetAccount(tx.Account)
 		senderAcc.Balance += tx.Fee
 	}
 }

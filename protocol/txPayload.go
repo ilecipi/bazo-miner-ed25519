@@ -11,18 +11,18 @@ These hashes will be consumed by the miners of the other shards, who then check 
 type TransactionPayload struct {
 	ShardID			int
 	Height 			int
-	ContractTxData  [][32]byte
+	AccTxData	 	[][32]byte
 	FundsTxData  	[][32]byte
 	ConfigTxData 	[][32]byte
 	StakeTxData  	[][32]byte
 	IotTxData		[][32]byte
 }
 
-func NewTransactionPayload(shardID int, height int, contractTx [][32]byte, fundsTx [][32]byte, configTx [][32]byte, stakeTx [][32]byte, iotTx [][32]byte) *TransactionPayload {
+func NewTransactionPayload(shardID int, height int, accTx [][32]byte, fundsTx [][32]byte, configTx [][32]byte, stakeTx [][32]byte, iotTx [][32]byte) *TransactionPayload {
 	newPayload := TransactionPayload{
 		ShardID:				shardID,
 		Height:					height,
-		ContractTxData: 		contractTx,
+		AccTxData:		 		accTx,
 		FundsTxData: 			fundsTx,
 		ConfigTxData: 			configTx,
 		StakeTxData: 			stakeTx,
@@ -48,7 +48,7 @@ func (txPayload *TransactionPayload) HashPayload() [32]byte {
 	}{
 		txPayload.ShardID,
 		txPayload.Height,
-		txPayload.ContractTxData,
+		txPayload.AccTxData,
 		txPayload.FundsTxData,
 		txPayload.ConfigTxData,
 		txPayload.StakeTxData,
@@ -59,7 +59,7 @@ func (txPayload *TransactionPayload) HashPayload() [32]byte {
 
 func (txPayload *TransactionPayload) GetPayloadSize() int {
 	size :=
-		len(txPayload.ContractTxData) + len(txPayload.FundsTxData) + len(txPayload.ConfigTxData) + len(txPayload.StakeTxData) + len(txPayload.IotTxData)
+		len(txPayload.AccTxData) + len(txPayload.FundsTxData) + len(txPayload.ConfigTxData) + len(txPayload.StakeTxData) + len(txPayload.IotTxData)
 	return size
 }
 
@@ -71,7 +71,7 @@ func (txPayload *TransactionPayload) EncodePayload() []byte {
 	encoded := TransactionPayload{
 		ShardID:			   txPayload.ShardID,
 		Height:				   txPayload.Height,
-		ContractTxData:        txPayload.ContractTxData,
+		AccTxData:        		txPayload.AccTxData,
 		FundsTxData:           txPayload.FundsTxData,
 		ConfigTxData:          txPayload.ConfigTxData,
 		StakeTxData:           txPayload.StakeTxData,
@@ -111,12 +111,12 @@ func (txPayload TransactionPayload) StringPayload() string {
 
 func (txPayload TransactionPayload) PayloadToString() (payload string) {
 
-	if(len(txPayload.ContractTxData) == 0){
-		payload += "=== NO Contract Tx ==="
+	if(len(txPayload.AccTxData) == 0){
+		payload += "=== NO Acc Tx ==="
 	} else {
-		payload += "=== Contract Tx ==="
+		payload += "=== Acc Tx ==="
 
-		for _, tx := range txPayload.ContractTxData {
+		for _, tx := range txPayload.AccTxData {
 			payload += fmt.Sprintf("\n%x", tx[:8])
 		}
 	}

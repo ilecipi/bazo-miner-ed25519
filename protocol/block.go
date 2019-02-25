@@ -33,18 +33,17 @@ type Block struct {
 	Nonce                 [8]byte
 	Timestamp             int64
 	MerkleRoot            [32]byte
-	MerklePatriciaRoot    [32]byte
-	NrContractTx          uint16
+	NrAccTx		          uint16
 	NrFundsTx             uint16
 	NrStakeTx             uint16
 	NrIotTx            	  uint16
 	SlashedAddress        [32]byte
-	CommitmentProof       [64]byte
+	CommitmentProof       [crypto.COMM_PROOF_LENGTH_ED]byte
 	ConflictingBlockHash1 [32]byte
 	ConflictingBlockHash2 [32]byte
 	StateCopy             map[[32]byte]*Account //won't be serialized, just keeping track of local state changes
 
-	ContractTxData  [][32]byte
+	AccTxData    [][32]byte
 	FundsTxData  	[][32]byte
 	ConfigTxData 	[][32]byte
 	StakeTxData  	[][32]byte
@@ -75,7 +74,6 @@ func (block *Block) HashBlock() [32]byte {
 		ShardId				  int
 		timestamp             int64
 		merkleRoot            [32]byte
-		merklePatriciaRoot	  [32]byte
 		beneficiary           [32]byte
 		commitmentProof       [crypto.COMM_PROOF_LENGTH_ED]byte
 		slashedAddress        [32]byte
@@ -86,7 +84,6 @@ func (block *Block) HashBlock() [32]byte {
 		block.ShardId,
 		block.Timestamp,
 		block.MerkleRoot,
-		block.MerklePatriciaRoot,
 		block.Beneficiary,
 		block.CommitmentProof,
 		block.SlashedAddress,
@@ -113,7 +110,7 @@ func (block *Block) InitBloomFilter(txPubKeys [][32]byte) {
 func (block *Block) GetSize() uint64 {
 	size :=
 		MIN_BLOCKSIZE +
-			int(block.NrContractTx)*TXHASH_LEN +
+			int(block.NrAccTx)*TXHASH_LEN +
 			int(block.NrFundsTx)*TXHASH_LEN +
 			int(block.NrConfigTx)*TXHASH_LEN +
 			int(block.NrStakeTx)*TXHASH_LEN +
@@ -140,9 +137,8 @@ func (block *Block) Encode() []byte {
 		Nonce:                 block.Nonce,
 		Timestamp:             block.Timestamp,
 		MerkleRoot:            block.MerkleRoot,
-		MerklePatriciaRoot:    block.MerklePatriciaRoot,
 		Beneficiary:           block.Beneficiary,
-		NrContractTx:          block.NrContractTx,
+		NrAccTx:          block.NrAccTx,
 		NrFundsTx:             block.NrFundsTx,
 		NrConfigTx:            block.NrConfigTx,
 		NrStakeTx:             block.NrStakeTx,
@@ -155,7 +151,7 @@ func (block *Block) Encode() []byte {
 		ConflictingBlockHash1: block.ConflictingBlockHash1,
 		ConflictingBlockHash2: block.ConflictingBlockHash2,
 
-		ContractTxData:        block.ContractTxData,
+		AccTxData:        block.AccTxData,
 		FundsTxData:           block.FundsTxData,
 		ConfigTxData:          block.ConfigTxData,
 		StakeTxData:           block.StakeTxData,
@@ -211,7 +207,6 @@ func (block Block) String() string {
 		"Nonce: %x\n"+
 		"Timestamp: %v\n"+
 		"MerkleRoot: %x\n"+
-		"MerklePatriciaRoot: %x\n"+
 		"Beneficiary: %x\n"+
 		"Amount of fundsTx: %v\n"+
 		"Amount of contractTx: %v\n"+
@@ -229,10 +224,9 @@ func (block Block) String() string {
 		block.Nonce,
 		block.Timestamp,
 		block.MerkleRoot[0:8],
-		block.MerklePatriciaRoot,
 		block.Beneficiary[0:8],
 		block.NrFundsTx,
-		block.NrContractTx,
+		block.NrAccTx,
 		block.NrConfigTx,
 		block.NrStakeTx,
 		block.NrIotTx,

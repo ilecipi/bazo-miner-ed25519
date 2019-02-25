@@ -1,9 +1,12 @@
 package storage
 
 import (
+	"fmt"
 	"github.com/bazo-blockchain/bazo-miner/protocol"
 	"log"
 	"os"
+	"errors"
+
 )
 
 func InitLogger() *log.Logger {
@@ -17,10 +20,19 @@ func IsRootKey(pubKey [32]byte) bool {
 
 //Get all pubKeys involved in ContractTx, FundsTx of a given block
 func GetTxPubKeys(block *protocol.Block) (txPubKeys [][32]byte) {
-	txPubKeys = GetContractTxPubKeys(block.ContractTxData)
+	txPubKeys = GetContractTxPubKeys(block.AccTxData)
 	txPubKeys = append(txPubKeys, GetFundsTxPubKeys(block.FundsTxData)...)
 
 	return txPubKeys
+}
+
+//Needed by miner and p2p package
+func GetAccount(hash [32]byte) (acc *protocol.Account, err error) {
+	if acc = State[hash]; acc != nil {
+		return acc, nil
+	} else {
+		return nil, errors.New(fmt.Sprintf("Acc (%x) not in the state.", hash[0:8]))
+	}
 }
 
 //Get all pubKey involved in ContractTx
@@ -40,6 +52,15 @@ func GetContractTxPubKeys(contractTxData [][32]byte) (contractTxPubKeys [][32]by
 	}
 
 	return contractTxPubKeys
+}
+
+func GetRootAccount(hash [32]byte) (acc *protocol.Account, err error) {
+	if IsRootKey(hash) {
+		acc, err = GetAccount(hash)
+		return acc, err
+	}
+
+	return nil, err
 }
 
 //Get all pubKey involved in FundsTx

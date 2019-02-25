@@ -80,7 +80,7 @@ func collectStatistics(b *protocol.Block) {
 
 	globalBlockCount++
 	localBlockCount++
-	totalTransactionsInBlock := b.NrFundsTx + uint16(b.NrConfigTx) + b.NrContractTx + b.NrStakeTx
+	totalTransactionsInBlock := b.NrFundsTx + uint16(b.NrConfigTx) + b.NrAccTx + b.NrStakeTx
 	validatedTXCount = validatedTXCount + int(totalTransactionsInBlock)
 	validatedBlockCount = validatedBlockCount + 1
 

@@ -120,203 +120,12 @@ func GetTotalAccountsCount() (accountsCount int) {
 	return len(storage.State)
 }
 
-func initState() (initialBlock *protocol.Block, err error) {
-	genesis, err := initGenesis()
-	if err != nil {
-		return nil, err
-	}
-
-	initialEpochBlock, err := initEpochBlock()
-	//Set the initialEpochBlock to the global variable 'lastEpochBlock'. This is needed to abort the POS for doing the validator assignment
-
-	//FileConnections.WriteString(fmt.Sprintf("'GENESIS: %x' -> 'EPOCH BLOCK: %x'\n",[32]byte{},initialEpochBlock.Hash[0:15]))
-
-	//Request last epoch block from the network
-	if(p2p.IsBootstrap()){
-		var eb *protocol.EpochBlock
-		eb = storage.ReadLastClosedEpochBlock()
-		lastEpochBlock = eb
-		if(lastEpochBlock == nil){
-			lastEpochBlock = initialEpochBlock
-		}
-	} else {
-		lastEpochBlock, err = getLastEpochBlock()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	storage.State = lastEpochBlock.State
-
-	//FileConnections.WriteString(fmt.Sprintf("'%x' -> 'EPOCH BLOCK: %x'\n",[32]byte{},initialEpochBlock.Hash[0:15]))
-
-	initRootAccounts(genesis)
-	err = initClosedBlocks(lastEpochBlock)
-	if err != nil {
-		return nil, err
-	}
-
-	initialBlock, err = getInitialBlock(lastEpochBlock)
-	if err != nil {
-		return nil, err
-	}
-
-	err = validateClosedBlocks()
-	if err != nil {
-		return nil, err
-	}
-
-	return initialBlock, nil
-}
-
 func initStateED() (initialBlock *protocol.Block, err error) {
-	genesis, err := initGenesis()
-	if err != nil {
-		return nil, err
-	}
-
-	initialEpochBlock, err := initEpochBlock()
-	//Set the initialEpochBlock to the global variable 'lastEpochBlock'. This is needed to abort the POS for doing the validator assignment
-
-	//FileConnections.WriteString(fmt.Sprintf("'GENESIS: %x' -> 'EPOCH BLOCK: %x'\n",[32]byte{},initialEpochBlock.Hash[0:15]))
-
-	//Request last epoch block from the network
-	if(p2p.IsBootstrap()){
-		var eb *protocol.EpochBlock
-		eb = storage.ReadLastClosedEpochBlock()
-		lastEpochBlock = eb
-		if(lastEpochBlock == nil){
-			lastEpochBlock = initialEpochBlock
-		}
-	} else {
-		lastEpochBlock, err = getLastEpochBlock()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	storage.State = lastEpochBlock.State
-
-	//FileConnections.WriteString(fmt.Sprintf("'%x' -> 'EPOCH BLOCK: %x'\n",[32]byte{},initialEpochBlock.Hash[0:15]))
-
-	initRootAccounts(genesis)
-	err = initClosedBlocks(lastEpochBlock)
-	if err != nil {
-		return nil, err
-	}
-
-	initialBlock, err = getInitialBlock(lastEpochBlock)
-	if err != nil {
-		return nil, err
-	}
-
-	err = validateClosedBlocks()
-	if err != nil {
-		return nil, err
-	}
-
-	return initialBlock, nil
-}
-
-
-
-func initGenesis() (genesis *protocol.Genesis, err error) {
-	if genesis, err = storage.ReadGenesis(); err != nil {
-		return nil, err
-	}
-
-	if genesis == nil {
-		p2p.GenesisReq()
-
-		// TODO: @rmnblm parallelize this
-		// blocking wait
-		select {
-		case encodedGenesis := <-p2p.GenesisReqChan:
-			genesis = genesis.Decode(encodedGenesis)
-			logger.Printf("Received genesis: %v", genesis.String())
-			FileConnectionsLog.WriteString(fmt.Sprintf("Received genesis: %v", genesis.String()))
-		case <-time.After(GENESISFETCH_TIMEOUT * time.Second):
-			return nil, errors.New("genesis fetch timeout")
-		}
-
-		storage.WriteGenesis(genesis)
-	}
-	return genesis, nil
-}
-
-func initEpochBlock() (initialEpochBlock *protocol.EpochBlock, err error) {
-	if initialEpochBlock, err = storage.ReadFirstEpochBlock(); err != nil {
-		return nil, err
-	}
-
-	if initialEpochBlock == nil {
-		p2p.FirstEpochBlockReq()
-
-		select {
-		case encodedFirstEpochBlock := <-p2p.FirstEpochBlockReqChan:
-			initialEpochBlock = initialEpochBlock.Decode(encodedFirstEpochBlock)
-			logger.Printf("Received first Epoch Block: %v\n", initialEpochBlock.String())
-			FileConnectionsLog.WriteString(fmt.Sprintf("Received first Epoch Block: %v\n", initialEpochBlock.String()))
-		case <-time.After(EPOCHBLOCKFETCH_TIMEOUT* time.Second):
-			return nil, errors.New("epoch block fetch timeout")
-		}
-
-		initialEpochBlock.State = storage.State
-		storage.WriteClosedEpochBlock(initialEpochBlock)
-
-		storage.DeleteAllLastClosedEpochBlock()
-		storage.WriteLastClosedEpochBlock(initialEpochBlock)
-	}
-	return initialEpochBlock, nil
-}
-
-/*Retrieve last epoch block from the network*/
-func getLastEpochBlock() (lastEpochBlock *protocol.EpochBlock, err error) {
-	p2p.LastEpochBlockReq()
-
-	var eb *protocol.EpochBlock
-
-	select {
-	case encodedLastEpochBlock := <-p2p.LastEpochBlockReqChan:
-		eb = eb.Decode(encodedLastEpochBlock)
-		logger.Printf("Received last Epoch Block: %v\n", eb.String())
-		FileConnectionsLog.WriteString(fmt.Sprintf("Received last Epoch Block: %v\n", eb.String()))
-	case <-time.After(EPOCHBLOCKFETCH_TIMEOUT* time.Second):
-		return nil, errors.New("epoch block fetch timeout")
-	}
-
-
-	storage.WriteClosedEpochBlock(eb)
-
-	storage.DeleteAllLastClosedEpochBlock()
-	storage.WriteLastClosedEpochBlock(eb)
-
-	return eb, nil
-}
-
-
-
-func initRootAccounts(genesis *protocol.Genesis) {
-	//rootAcc := protocol.NewAccount(genesis.RootAddress, [64]byte{}, activeParameters.Staking_minimum, true, genesis.RootCommitment, nil, nil)
-	rootAcc := protocol.NewAccount(genesis.RootAddress, [32]byte{}, 4000, true, genesis.RootCommitment, nil, nil)
-	storage.State[genesis.RootAddress] = &rootAcc
-	storage.RootKeys[genesis.RootAddress] = &rootAcc
-}
-
-func initClosedBlocks(lastEpochBlock *protocol.EpochBlock) error {
 	var allClosedBlocks []*protocol.Block
 	if p2p.IsBootstrap() {
-		/*Get all closed blocks from the last block back to the last epoch block, i.e. all closed blocks from the current epoch*/
-		if nextBlock := storage.ReadLastClosedBlock(); nextBlock != nil && nextBlock.Height > lastEpochBlock.Height{
-			allClosedBlocks = append(allClosedBlocks, nextBlock)
-			for nextBlock.Height > lastEpochBlock.Height + 1 {
-				nextBlock = storage.ReadClosedBlock(nextBlock.PrevHash)
-				allClosedBlocks = append(allClosedBlocks, nextBlock)
-			}
-		}
+		allClosedBlocks = storage.ReadAllClosedBlocks()
 	} else {
 		p2p.LastBlockReq()
-
 		var lastBlock *protocol.Block
 		//Blocking wait
 		select {
@@ -324,7 +133,7 @@ func initClosedBlocks(lastEpochBlock *protocol.EpochBlock) error {
 			lastBlock = lastBlock.Decode(encodedBlock)
 			//Limit waiting time to BLOCKFETCH_TIMEOUT seconds before aborting.
 		case <-time.After(BLOCKFETCH_TIMEOUT * time.Second):
-			return errors.New("block fetch timeout")
+			return nil, nil
 		}
 
 		storage.WriteClosedBlock(lastBlock)
@@ -336,13 +145,6 @@ func initClosedBlocks(lastEpochBlock *protocol.EpochBlock) error {
 		}
 
 		for {
-			if lastBlock.Height == lastEpochBlock.Height + 1 {
-				if lastBlock.PrevHash != lastEpochBlock.Hash {
-					return errors.New("invalid last epoch block")
-				}
-				break
-			}
-
 			p2p.BlockReq(lastBlock.PrevHash)
 			select {
 			case encodedBlock := <-p2p.BlockReqChan:
@@ -359,41 +161,30 @@ func initClosedBlocks(lastEpochBlock *protocol.EpochBlock) error {
 				allClosedBlocks = append(allClosedBlocks, lastBlock)
 			}
 			fmt.Println("Last block: ", lastBlock.Height)
+			if lastBlock.Height == 0 {
+				break;
+			}
 		}
 	}
 
 	//Switch array order to validate genesis block first
 	storage.AllClosedBlocksAsc = InvertBlockArray(allClosedBlocks)
 
-	return nil
-}
-
-func getInitialBlock(lastEpochBlock *protocol.EpochBlock) (initialBlock *protocol.Block, err error) {
-	if len(storage.AllClosedBlocksAscED) > 0 {
+	if len(storage.AllClosedBlocksAsc) > 0 {
 		//Set the last closed block as the initial block
-		initialBlock = storage.AllClosedBlocksAscED[len(storage.AllClosedBlocksAscED)-1]
+		initialBlock = storage.AllClosedBlocksAsc[len(storage.AllClosedBlocksAsc)-1]
 	} else {
-		initialBlock = newBlock(lastEpochBlock.Hash, [64]byte{}, 1) // since first epoch block is at height 0
-		commitmentProof := crypto.SignMessageWithED(commPrivKey, fmt.Sprint(initialBlock.Height))
-		if err != nil {
-			return nil, err
-		}
+		initialBlock = newBlock([32]byte{}, [crypto.COMM_PROOF_LENGTH_ED]byte{}, 0)
+
+		commitmentProof := crypto.SignMessageWithED(rootCommPrivKey, fmt.Sprint(initialBlock.Height))
 		copy(initialBlock.CommitmentProof[:], commitmentProof[:])
 
-		initialBlock.Hash = initialBlock.HashBlock()
-
 		//Append genesis block to the map and save in storage
-		storage.AllClosedBlocksAscED = append(storage.AllClosedBlocksAscED, initialBlock)
+		storage.AllClosedBlocksAsc = append(storage.AllClosedBlocksAsc, initialBlock)
 
-		storage.DeleteAllLastClosedEpochBlock()
 		storage.WriteLastClosedBlock(initialBlock)
 		storage.WriteClosedBlock(initialBlock)
 	}
-
-	return initialBlock, nil
-}
-
-func validateClosedBlocks() error {
 
 	//Validate all closed blocks and update state
 	for _, blockToValidate := range storage.AllClosedBlocksAsc {
@@ -401,18 +192,18 @@ func validateClosedBlocks() error {
 		blockDataMap := make(map[[32]byte]blockData)
 
 		//Do not validate the genesis block, since a lot of properties are set to nil
-		if blockToValidate.Hash != [32]byte{} && blockToValidate.Height != uint32(1) {
+		if blockToValidate.Hash != [32]byte{} {
 			//Fetching payload data from the txs (if necessary, ask other miners)
-			contractTxs, fundsTxs, configTxs, stakeTxs, err := preValidate(blockToValidate, true)
+			accTxs, fundsTxs, configTxs, stakeTxs, err := preValidate(blockToValidate, true)
 			if err != nil {
-				return errors.New(fmt.Sprintf("Block (%x) could not be prevalidated: %v\n", blockToValidate.Hash[0:8], err))
+				return nil, errors.New(fmt.Sprintf("Block (%x) could not be prevalidated: %v\n", blockToValidate.Hash[0:8], err))
 			}
 
-			blockDataMap[blockToValidate.Hash] = blockData{contractTxs, fundsTxs, configTxs, stakeTxs, blockToValidate}
+			blockDataMap[blockToValidate.Hash] = blockData{accTxs, fundsTxs, configTxs, stakeTxs, blockToValidate}
 
 			err = validateState(blockDataMap[blockToValidate.Hash])
 			if err != nil {
-				return errors.New(fmt.Sprintf("Block (%x) could not be state validated: %v\n", blockToValidate.Hash[0:8], err))
+				return nil, errors.New(fmt.Sprintf("Block (%x) could not be statevalidated: %v\n", blockToValidate.Hash[0:8], err))
 			}
 
 			postValidate(blockDataMap[blockToValidate.Hash], true)
@@ -423,28 +214,155 @@ func validateClosedBlocks() error {
 		}
 
 		logger.Printf("Validated block with height %v\n", blockToValidate.Height)
-		FileConnectionsLog.WriteString(fmt.Sprintf("Validated block with height %v\n", blockToValidate.Height))
-		//FileConnections.WriteString(fmt.Sprintf("'%x' -> '%x'\n",blockToValidate.PrevHash[0:15],blockToValidate.Hash[0:15]))
 
 		//Set the last validated block as the lastBlock
 		lastBlock = blockToValidate
 	}
 
-	logger.Printf("%v block(s) validated. Chain good to go.\n", len(storage.AllClosedBlocksAsc))
-	FileConnectionsLog.WriteString(fmt.Sprintf("%v block(s) validated. Chain good to go.\n", len(storage.AllClosedBlocksAsc)))
-	//file.Close()
-	return nil
+	logger.Printf("%v block(s) validated. Chain good to go.", len(storage.AllClosedBlocksAsc))
+
+	return initialBlock, nil
 }
 
-func accStateChange(txSlice []*protocol.ContractTx) {
-	for _, tx := range txSlice {
-		acc, _ := storage.ReadAccount(tx.PubKey)
-		if acc == nil {
-			newAcc := protocol.NewAccount(tx.PubKey, tx.Issuer, 0, false, [crypto.COMM_KEY_LENGTH_ED]byte{}, tx.Contract, tx.ContractVariables)
-			storage.WriteAccount(&newAcc)
-			//RelativeStateBalance[acc.Address] = 0
+func initState() (initialBlock *protocol.Block, err error) {
+	var allClosedBlocks []*protocol.Block
+	if p2p.IsBootstrap() {
+		allClosedBlocks = storage.ReadAllClosedBlocks()
+	} else {
+		p2p.LastBlockReq()
+		var lastBlock *protocol.Block
+		//Blocking wait
+		select {
+		case encodedBlock := <-p2p.BlockReqChan:
+			lastBlock = lastBlock.Decode(encodedBlock)
+			//Limit waiting time to BLOCKFETCH_TIMEOUT seconds before aborting.
+		case <-time.After(BLOCKFETCH_TIMEOUT * time.Second):
+			return nil, nil
+		}
+
+		storage.WriteClosedBlock(lastBlock)
+		storage.WriteLastClosedBlock(lastBlock)
+		if len(allClosedBlocks) > 0 && allClosedBlocks[len(allClosedBlocks)-1].Hash == lastBlock.Hash {
+			fmt.Printf("Block with height %v already exists", lastBlock.Height)
+		} else {
+			allClosedBlocks = append(allClosedBlocks, lastBlock)
+		}
+
+		for {
+			p2p.BlockReq(lastBlock.PrevHash)
+			select {
+			case encodedBlock := <-p2p.BlockReqChan:
+				lastBlock = lastBlock.Decode(encodedBlock)
+				//Limit waiting time to BLOCKFETCH_TIMEOUT seconds before aborting.
+			case <-time.After(BLOCKFETCH_TIMEOUT * time.Second):
+				logger.Println("Timed out")
+			}
+
+			storage.WriteClosedBlock(lastBlock)
+			if len(allClosedBlocks) > 0 && allClosedBlocks[len(allClosedBlocks)-1].Hash == lastBlock.Hash {
+				fmt.Printf("Block with height %v already exists", lastBlock.Height)
+			} else {
+				allClosedBlocks = append(allClosedBlocks, lastBlock)
+			}
+			fmt.Println("Last block: ", lastBlock.Height)
+			if lastBlock.Height == 0 {
+				break;
+			}
 		}
 	}
+
+	//Switch array order to validate genesis block first
+	storage.AllClosedBlocksAsc = InvertBlockArray(allClosedBlocks)
+
+	if len(storage.AllClosedBlocksAsc) > 0 {
+		//Set the last closed block as the initial block
+		initialBlock = storage.AllClosedBlocksAsc[len(storage.AllClosedBlocksAsc)-1]
+	} else {
+		initialBlock = newBlock([32]byte{}, [crypto.COMM_PROOF_LENGTH_ED]byte{}, 0)
+
+		commitmentProof:= crypto.SignMessageWithED(rootCommPrivKey, fmt.Sprint(initialBlock.Height))
+
+		copy(initialBlock.CommitmentProof[:], commitmentProof[:])
+
+		//Append genesis block to the map and save in storage
+		storage.AllClosedBlocksAsc = append(storage.AllClosedBlocksAsc, initialBlock)
+
+		storage.WriteLastClosedBlock(initialBlock)
+		storage.WriteClosedBlock(initialBlock)
+	}
+
+	//Validate all closed blocks and update state
+	for _, blockToValidate := range storage.AllClosedBlocksAsc {
+		//Prepare datastructure to fill tx payloads
+		blockDataMap := make(map[[32]byte]blockData)
+
+		//Do not validate the genesis block, since a lot of properties are set to nil
+		if blockToValidate.Hash != [32]byte{} {
+			//Fetching payload data from the txs (if necessary, ask other miners)
+			accTxs, fundsTxs, configTxs, stakeTxs, err := preValidate(blockToValidate, true)
+			if err != nil {
+				return nil, errors.New(fmt.Sprintf("Block (%x) could not be prevalidated: %v\n", blockToValidate.Hash[0:8], err))
+			}
+
+			blockDataMap[blockToValidate.Hash] = blockData{accTxs, fundsTxs, configTxs, stakeTxs, blockToValidate}
+
+			err = validateState(blockDataMap[blockToValidate.Hash])
+			if err != nil {
+				return nil, errors.New(fmt.Sprintf("Block (%x) could not be statevalidated: %v\n", blockToValidate.Hash[0:8], err))
+			}
+
+			postValidate(blockDataMap[blockToValidate.Hash], true)
+		} else {
+			blockDataMap[blockToValidate.Hash] = blockData{nil, nil, nil, nil, blockToValidate}
+
+			postValidate(blockDataMap[blockToValidate.Hash], true)
+		}
+
+		logger.Printf("Validated block with height %v\n", blockToValidate.Height)
+
+		//Set the last validated block as the lastBlock
+		lastBlock = blockToValidate
+	}
+
+	logger.Printf("%v block(s) validated. Chain good to go.", len(storage.AllClosedBlocksAsc))
+
+	return initialBlock, nil
+}
+
+func accStateChange(txSlice []*protocol.AccTx) error {
+	for _, tx := range txSlice {
+		if tx.Header != 2 {
+			newAcc := protocol.NewAccount(tx.PubKey, tx.Issuer, 0, false, [crypto.COMM_KEY_LENGTH_ED]byte{}, tx.Contract, tx.ContractVariables)
+			newAccHash := newAcc.Hash()
+
+			acc, _ := storage.GetAccount(newAccHash)
+			if acc != nil {
+				//Shouldn't happen, because this should have been prevented when adding an accTx to the block
+				return errors.New("Address already exists in the state.")
+			}
+
+			//If acc does not exist, write to state
+			storage.State[newAccHash] = &newAcc
+
+			if tx.Header == 1 {
+				//First bit set, given account will be a new root account
+				//It might be cleaner to move this to the storage package (e.g., storage.Delete(...))
+				//leave it here for now (not fully convinced yet)
+				storage.RootKeys[newAccHash] = &newAcc
+			}
+		} else if tx.Header == 2 {
+			accHash := protocol.SerializeHashContent(tx.PubKey)
+			_, err := storage.GetAccount(accHash)
+			if err != nil {
+				return err
+			}
+
+			//Second bit set, delete account from root account
+			delete(storage.RootKeys, accHash)
+		}
+	}
+
+	return nil
 }
 
 func fundsStateChange(txSlice []*protocol.FundsTx) (err error) {
@@ -691,33 +609,33 @@ func applyStakeChange(txSlice []*protocol.StakeTx, height uint32) (err error) {
 	return nil
 }
 
-func collectTxFees(contractTxSlice []*protocol.ContractTx, fundsTxSlice []*protocol.FundsTx, configTxSlice []*protocol.ConfigTx, stakeTxSlice []*protocol.StakeTx, minerAddress [32]byte) (err error) {
-	var tmpContractTx []*protocol.ContractTx
+func collectTxFees(accTxSlice []*protocol.AccTx, fundsTxSlice []*protocol.FundsTx, configTxSlice []*protocol.ConfigTx, stakeTxSlice []*protocol.StakeTx, minerHash [32]byte) (err error) {
+	var tmpAccTx []*protocol.AccTx
 	var tmpFundsTx []*protocol.FundsTx
 	var tmpConfigTx []*protocol.ConfigTx
 	var tmpStakeTx []*protocol.StakeTx
 
-	minerAcc, err := storage.ReadAccount(minerAddress)
+	minerAcc, err := storage.GetAccount(minerHash)
 	if err != nil {
 		return err
 	}
 
 	var senderAcc *protocol.Account
 
-	for _, tx := range contractTxSlice {
+	for _, tx := range accTxSlice {
 		if minerAcc.Balance+tx.Fee > MAX_MONEY {
 			err = errors.New("Fee amount would lead to balance overflow at the miner account.")
 		}
 
 		if err != nil {
-			//Rollback of all previously transferred transaction fees to the protocol's account
-			collectTxFeesRollback(tmpContractTx, tmpFundsTx, tmpConfigTx, tmpStakeTx, minerAddress)
+			//Rollback of all perviously transferred transaction fees to the protocol's account
+			collectTxFeesRollback(tmpAccTx, tmpFundsTx, tmpConfigTx, tmpStakeTx, minerHash)
 			return err
 		}
 
 		//Money gets created from thin air, no need to subtract money from root key
 		minerAcc.Balance += tx.Fee
-		tmpContractTx = append(tmpContractTx, tx)
+		tmpAccTx = append(tmpAccTx, tx)
 	}
 
 	//subtract fees from sender (check if that is allowed has already been done in the block validation)
@@ -727,11 +645,11 @@ func collectTxFees(contractTxSlice []*protocol.ContractTx, fundsTxSlice []*proto
 			err = errors.New("Fee amount would lead to balance overflow at the miner account.")
 		}
 
-		senderAcc, err = storage.ReadAccount(tx.From)
+		senderAcc, err = storage.GetAccount(tx.From)
 
 		if err != nil {
 			//Rollback of all perviously transferred transaction fees to the protocol's account
-			collectTxFeesRollback(tmpContractTx, tmpFundsTx, tmpConfigTx, tmpStakeTx, minerAddress)
+			collectTxFeesRollback(tmpAccTx, tmpFundsTx, tmpConfigTx, tmpStakeTx, minerHash)
 			return err
 		}
 
@@ -747,7 +665,7 @@ func collectTxFees(contractTxSlice []*protocol.ContractTx, fundsTxSlice []*proto
 
 		if err != nil {
 			//Rollback of all perviously transferred transaction fees to the protocol's account
-			collectTxFeesRollback(tmpContractTx, tmpFundsTx, tmpConfigTx, tmpStakeTx, minerAddress)
+			collectTxFeesRollback(tmpAccTx, tmpFundsTx, tmpConfigTx, tmpStakeTx, minerHash)
 			return err
 		}
 
@@ -761,11 +679,11 @@ func collectTxFees(contractTxSlice []*protocol.ContractTx, fundsTxSlice []*proto
 			err = errors.New("Fee amount would lead to balance overflow at the miner account.")
 		}
 
-		senderAcc, err = storage.ReadAccount(tx.Account)
+		senderAcc, err = storage.GetAccount(tx.Account)
 
 		if err != nil {
 			//Rollback of all perviously transferred transaction fees to the protocol's account
-			collectTxFeesRollback(tmpContractTx, tmpFundsTx, tmpConfigTx, tmpStakeTx, minerAddress)
+			collectTxFeesRollback(tmpAccTx, tmpFundsTx, tmpConfigTx, tmpStakeTx, minerHash)
 			return err
 		}
 
